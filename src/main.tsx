@@ -1679,96 +1679,365 @@ function App({ initialSipProfile }: { initialSipProfile?: SipProfile }) {
           </section>
         ) : activeNav === "Products" ? (
           <section className="resource-page product-catalog-page">
-            <header className="home-header">
-              <div>
-                <h1>Products</h1>
-                <p>
-                  The organization catalog. Link products to a campaign when you
-                  set it up.
-                </p>
-              </div>
-              <button
-                className="primary-button"
-                onClick={() => openProductEditor()}
-              >
-                <Plus size={16} /> Add product
-              </button>
-            </header>
-            {products.length ? (
-              <div className="campaign-index">
-                {products.map((product) => (
-                  <article className="campaign-card" key={product._id}>
+            {productEditorOpen ? (
+              <>
+                <header className="home-header">
+                  <div>
+                    <h1>{editingProductId ? "Edit product" : "New product"}</h1>
+                    <p>
+                      {editingProductId
+                        ? "Update details, sales context, and qualified lead checklist."
+                        : "Add a new product to your organization's catalog."}
+                    </p>
+                  </div>
+                  <div className="header-actions">
                     <button
                       type="button"
-                      className="campaign-card-main"
-                      onClick={() => openProductEditor(product)}
+                      className="secondary-button"
+                      onClick={() => setProductEditorOpen(false)}
                     >
-                      <div className="campaign-card-header">
-                        <div className="campaign-card-title-group">
-                          <strong>{product.name}</strong>
-                          <span className="campaign-card-subtitle">
-                            {product.whoWeHelp ? `Target: ${product.whoWeHelp}` : "Product"}
-                          </span>
-                        </div>
-                      </div>
-                      <p className="product-description-snippet">
-                        {product.description ||
-                          product.elevatorPitch ||
-                          "No description provided."}
-                      </p>
-                      {product.tags && product.tags.length > 0 && (
-                        <div className="campaign-card-products">
-                          {product.tags.map((tag: string) => (
-                            <span key={tag} className="campaign-product-pill">
-                              {tag}
-                            </span>
-                          ))}
-                        </div>
-                      )}
+                      Back to products
                     </button>
-                    <footer>
-                      <button
-                        type="button"
-                        className="text-button card-open-action"
-                        onClick={() => openProductEditor(product)}
+                  </div>
+                </header>
+                <form className="campaign-form-detail" onSubmit={saveProduct}>
+                  <label>
+                    Product name
+                    <input
+                      required
+                      autoFocus
+                      value={productDraft.name}
+                      onChange={(event) =>
+                        setProductDraft({
+                          ...productDraft,
+                          name: event.target.value,
+                        })
+                      }
+                      placeholder="Website Development"
+                    />
+                  </label>
+                  <label>
+                    Short description
+                    <textarea
+                      required
+                      value={productDraft.description}
+                      onChange={(event) =>
+                        setProductDraft({
+                          ...productDraft,
+                          description: event.target.value,
+                        })
+                      }
+                      placeholder="What it does in one clear sentence."
+                    />
+                  </label>
+                  <label>
+                    Tags (comma-separated)
+                    <input
+                      value={productDraft.tags}
+                      onChange={(event) =>
+                        setProductDraft({
+                          ...productDraft,
+                          tags: event.target.value,
+                        })
+                      }
+                      placeholder="Website design, Local SEO, AI receptionist"
+                    />
+                  </label>
+                  <div className="modal-section" style={{ padding: 0, border: 0 }}>
+                    <h3>Sales context</h3>
+                    <label>
+                      Who we are
+                      <textarea
+                        value={productDraft.whoWeAre}
+                        onChange={(event) =>
+                          setProductDraft({
+                            ...productDraft,
+                            whoWeAre: event.target.value,
+                          })
+                        }
+                      />
+                    </label>
+                    <label>
+                      Who we help (Ideal customer)
+                      <textarea
+                        value={productDraft.whoWeHelp}
+                        onChange={(event) =>
+                          setProductDraft({
+                            ...productDraft,
+                            whoWeHelp: event.target.value,
+                          })
+                        }
+                        placeholder="Owner-led Austin service businesses with an outdated website."
+                      />
+                    </label>
+                    <label>
+                      Elevator pitch
+                      <textarea
+                        value={productDraft.elevatorPitch}
+                        onChange={(event) =>
+                          setProductDraft({
+                            ...productDraft,
+                            elevatorPitch: event.target.value,
+                          })
+                        }
+                      />
+                    </label>
+                    <label>
+                      Common objections
+                      <textarea
+                        value={productDraft.commonObjections}
+                        onChange={(event) =>
+                          setProductDraft({
+                            ...productDraft,
+                            commonObjections: event.target.value,
+                          })
+                        }
+                      />
+                    </label>
+                  </div>
+                  <div className="booking-fields">
+                    <label>
+                      Booking provider
+                      <select
+                        value={productDraft.bookingProvider}
+                        onChange={(event) =>
+                          setProductDraft({
+                            ...productDraft,
+                            bookingProvider: event.target.value,
+                          })
+                        }
                       >
-                        Edit product <ChevronRight size={14} />
-                      </button>
-                      <button
-                        type="button"
-                        className="icon-button destructive-button"
-                        aria-label={`Delete ${product.name}`}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          if (
-                            window.confirm(
-                              `Delete ${product.name}? It will be unlinked from all campaigns.`,
-                            )
-                          )
-                            void removeProduct({ productId: product._id });
-                        }}
-                      >
-                        <Trash2 size={15} />
-                      </button>
-                    </footer>
-                  </article>
-                ))}
-              </div>
+                        <option value="calcom">Cal.com</option>
+                        <option value="calendly">Calendly</option>
+                      </select>
+                    </label>
+                    <label>
+                      Booking link
+                      <input
+                        type="url"
+                        value={productDraft.bookingUrl}
+                        onChange={(event) =>
+                          setProductDraft({
+                            ...productDraft,
+                            bookingUrl: event.target.value,
+                          })
+                        }
+                        placeholder="https://cal.com/..."
+                      />
+                    </label>
+                  </div>
+                  <div className="criteria-editor">
+                    <div>
+                      <h3>Qualified lead checklist</h3>
+                      <p>
+                        These appear before the calendar in a live call.
+                      </p>
+                    </div>
+                    {productDraft.qualificationCriteria.map(
+                      (criterion, index) => (
+                        <div className="criterion-row" key={index}>
+                          <input
+                            value={criterion.label}
+                            onChange={(event) =>
+                              setProductDraft((current) => ({
+                                ...current,
+                                qualificationCriteria:
+                                  current.qualificationCriteria.map(
+                                    (item, itemIndex) =>
+                                      itemIndex === index
+                                        ? {
+                                            ...item,
+                                            label: event.target.value,
+                                          }
+                                        : item,
+                                  ),
+                              }))
+                            }
+                            placeholder="Qualification criterion"
+                          />
+                          <input
+                            value={criterion.guidance || ""}
+                            onChange={(event) =>
+                              setProductDraft((current) => ({
+                                ...current,
+                                qualificationCriteria:
+                                  current.qualificationCriteria.map(
+                                    (item, itemIndex) =>
+                                      itemIndex === index
+                                        ? {
+                                            ...item,
+                                            guidance: event.target.value,
+                                          }
+                                        : item,
+                                  ),
+                              }))
+                            }
+                            placeholder="Optional guidance"
+                          />
+                          <label>
+                            <input
+                              type="checkbox"
+                              checked={criterion.required}
+                              onChange={(event) =>
+                                setProductDraft((current) => ({
+                                  ...current,
+                                  qualificationCriteria:
+                                    current.qualificationCriteria.map(
+                                      (item, itemIndex) =>
+                                        itemIndex === index
+                                          ? {
+                                              ...item,
+                                              required:
+                                                event.target.checked,
+                                            }
+                                          : item,
+                                    ),
+                                }))
+                              }
+                            />{" "}
+                            Required
+                          </label>
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setProductDraft((current) => ({
+                                ...current,
+                                qualificationCriteria:
+                                  current.qualificationCriteria.filter(
+                                    (_, itemIndex) => itemIndex !== index,
+                                  ),
+                              }))
+                            }
+                          >
+                            Remove
+                          </button>
+                        </div>
+                      ),
+                    )}
+                    <button
+                      type="button"
+                      className="secondary-button"
+                      onClick={() =>
+                        setProductDraft((current) => ({
+                          ...current,
+                          qualificationCriteria: [
+                            ...current.qualificationCriteria,
+                            { label: "", guidance: "", required: true },
+                          ],
+                        }))
+                      }
+                    >
+                      Add criterion
+                    </button>
+                  </div>
+                  <div className="form-actions" style={{ marginTop: "24px" }}>
+                    <button
+                      type="button"
+                      className="secondary-button"
+                      onClick={() => setProductEditorOpen(false)}
+                    >
+                      Cancel
+                    </button>
+                    <button type="submit" className="primary-button">
+                      Save product
+                    </button>
+                  </div>
+                </form>
+              </>
             ) : (
-              <div className="portfolio-empty">
-                <Package size={32} />
-                <strong>No products yet</strong>
-                <span>
-                  Start with what your organization sells. Campaigns can then
-                  choose the relevant products.
-                </span>
-                <button
-                  className="primary-button"
-                  onClick={() => openProductEditor()}
-                >
-                  <Plus size={16} /> Add product
-                </button>
-              </div>
+              <>
+                <header className="home-header">
+                  <div>
+                    <h1>Products</h1>
+                    <p>
+                      The organization catalog. Link products to a campaign when you
+                      set it up.
+                    </p>
+                  </div>
+                  <button
+                    className="primary-button"
+                    onClick={() => openProductEditor()}
+                  >
+                    <Plus size={16} /> Add product
+                  </button>
+                </header>
+                {products.length ? (
+                  <div className="campaign-index">
+                    {products.map((product) => (
+                      <article className="campaign-card" key={product._id}>
+                        <button
+                          type="button"
+                          className="campaign-card-main"
+                          onClick={() => openProductEditor(product)}
+                        >
+                          <div className="campaign-card-header">
+                            <div className="campaign-card-title-group">
+                              <strong>{product.name}</strong>
+                              <span className="campaign-card-subtitle">
+                                {product.whoWeHelp ? `Target: ${product.whoWeHelp}` : "Product"}
+                              </span>
+                            </div>
+                          </div>
+                          <p className="product-description-snippet">
+                            {product.description ||
+                              product.elevatorPitch ||
+                              "No description provided."}
+                          </p>
+                          {product.tags && product.tags.length > 0 && (
+                            <div className="campaign-card-products">
+                              {product.tags.map((tag: string) => (
+                                <span key={tag} className="campaign-product-pill">
+                                  {tag}
+                                </span>
+                              ))}
+                            </div>
+                          )}
+                        </button>
+                        <footer>
+                          <button
+                            type="button"
+                            className="text-button card-open-action"
+                            onClick={() => openProductEditor(product)}
+                          >
+                            Edit product <ChevronRight size={14} />
+                          </button>
+                          <button
+                            type="button"
+                            className="icon-button destructive-button"
+                            aria-label={`Delete ${product.name}`}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              if (
+                                window.confirm(
+                                  `Delete ${product.name}? It will be unlinked from all campaigns.`,
+                                )
+                              )
+                                void removeProduct({ productId: product._id });
+                            }}
+                          >
+                            <Trash2 size={15} />
+                          </button>
+                        </footer>
+                      </article>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="portfolio-empty">
+                    <Package size={32} />
+                    <strong>No products yet</strong>
+                    <span>
+                      Start with what your organization sells. Campaigns can then
+                      choose the relevant products.
+                    </span>
+                    <button
+                      className="primary-button"
+                      onClick={() => openProductEditor()}
+                    >
+                      <Plus size={16} /> Add product
+                    </button>
+                  </div>
+                )}
+              </>
             )}
           </section>
         ) : activeNav === "Overview" ? (
@@ -4078,270 +4347,7 @@ function App({ initialSipProfile }: { initialSipProfile?: SipProfile }) {
             )}
           </>
         )}
-        {productEditorOpen && (
-          <div className="campaign-modal-backdrop" role="presentation">
-            <form
-              className="campaign-create-modal product-editor-modal"
-              onSubmit={saveProduct}
-            >
-              <header>
-                <div>
-                  <h2>{editingProductId ? "Edit product" : "Add product"}</h2>
-                  <p>
-                    Keep the catalog detailed once, then reuse the product
-                    across campaigns.
-                  </p>
-                </div>
-                <button
-                  type="button"
-                  className="text-button"
-                  onClick={() => setProductEditorOpen(false)}
-                >
-                  Close
-                </button>
-              </header>
-              <label>
-                Product name
-                <input
-                  required
-                  autoFocus
-                  value={productDraft.name}
-                  onChange={(event) =>
-                    setProductDraft({
-                      ...productDraft,
-                      name: event.target.value,
-                    })
-                  }
-                  placeholder="Website Development"
-                />
-              </label>
-              <label>
-                Short description
-                <textarea
-                  required
-                  value={productDraft.description}
-                  onChange={(event) =>
-                    setProductDraft({
-                      ...productDraft,
-                      description: event.target.value,
-                    })
-                  }
-                  placeholder="What it does in one clear sentence."
-                />
-              </label>
-              <label>
-                Tags
-                <input
-                  value={productDraft.tags}
-                  onChange={(event) =>
-                    setProductDraft({
-                      ...productDraft,
-                      tags: event.target.value,
-                    })
-                  }
-                  placeholder="Website design, Local SEO, AI receptionist"
-                />
-              </label>
-              <div className="modal-section">
-                <h3>Sales context</h3>
-                <label>
-                  Who we are
-                  <textarea
-                    value={productDraft.whoWeAre}
-                    onChange={(event) =>
-                      setProductDraft({
-                        ...productDraft,
-                        whoWeAre: event.target.value,
-                      })
-                    }
-                  />
-                </label>
-                <label>
-                  Who we help (Ideal customer)
-                  <textarea
-                    value={productDraft.whoWeHelp}
-                    onChange={(event) =>
-                      setProductDraft({
-                        ...productDraft,
-                        whoWeHelp: event.target.value,
-                      })
-                    }
-                    placeholder="Owner-led Austin service businesses with an outdated website."
-                  />
-                </label>
-                <label>
-                  Elevator pitch
-                  <textarea
-                    value={productDraft.elevatorPitch}
-                    onChange={(event) =>
-                      setProductDraft({
-                        ...productDraft,
-                        elevatorPitch: event.target.value,
-                      })
-                    }
-                  />
-                </label>
-                <label>
-                  Common objections
-                  <textarea
-                    value={productDraft.commonObjections}
-                    onChange={(event) =>
-                      setProductDraft({
-                        ...productDraft,
-                        commonObjections: event.target.value,
-                      })
-                    }
-                  />
-                </label>
-              </div>
-              <div className="booking-fields">
-                <label>
-                  Booking provider
-                  <select
-                    value={productDraft.bookingProvider}
-                    onChange={(event) =>
-                      setProductDraft({
-                        ...productDraft,
-                        bookingProvider: event.target.value,
-                      })
-                    }
-                  >
-                    <option value="calcom">Cal.com</option>
-                    <option value="calendly">Calendly</option>
-                  </select>
-                </label>
-                <label>
-                  Booking link
-                  <input
-                    type="url"
-                    value={productDraft.bookingUrl}
-                    onChange={(event) =>
-                      setProductDraft({
-                        ...productDraft,
-                        bookingUrl: event.target.value,
-                      })
-                    }
-                    placeholder="https://cal.com/..."
-                  />
-                </label>
-              </div>
-              <div className="criteria-editor">
-                <div>
-                  <h3>Qualified lead checklist</h3>
-                  <p>
-                    These appear before the calendar in a live call.
-                  </p>
-                </div>
-                {productDraft.qualificationCriteria.map(
-                  (criterion, index) => (
-                    <div className="criterion-row" key={index}>
-                      <input
-                        value={criterion.label}
-                        onChange={(event) =>
-                          setProductDraft((current) => ({
-                            ...current,
-                            qualificationCriteria:
-                              current.qualificationCriteria.map(
-                                (item, itemIndex) =>
-                                  itemIndex === index
-                                    ? {
-                                        ...item,
-                                        label: event.target.value,
-                                      }
-                                    : item,
-                              ),
-                          }))
-                        }
-                        placeholder="Qualification criterion"
-                      />
-                      <input
-                        value={criterion.guidance || ""}
-                        onChange={(event) =>
-                          setProductDraft((current) => ({
-                            ...current,
-                            qualificationCriteria:
-                              current.qualificationCriteria.map(
-                                (item, itemIndex) =>
-                                  itemIndex === index
-                                    ? {
-                                        ...item,
-                                        guidance: event.target.value,
-                                      }
-                                    : item,
-                              ),
-                          }))
-                        }
-                        placeholder="Optional guidance"
-                      />
-                      <label>
-                        <input
-                          type="checkbox"
-                          checked={criterion.required}
-                          onChange={(event) =>
-                            setProductDraft((current) => ({
-                              ...current,
-                              qualificationCriteria:
-                                current.qualificationCriteria.map(
-                                  (item, itemIndex) =>
-                                    itemIndex === index
-                                      ? {
-                                          ...item,
-                                          required:
-                                            event.target.checked,
-                                        }
-                                      : item,
-                                ),
-                            }))
-                          }
-                        />{" "}
-                        Required
-                      </label>
-                      <button
-                        type="button"
-                        onClick={() =>
-                          setProductDraft((current) => ({
-                            ...current,
-                            qualificationCriteria:
-                              current.qualificationCriteria.filter(
-                                (_, itemIndex) => itemIndex !== index,
-                              ),
-                          }))
-                        }
-                      >
-                        Remove
-                      </button>
-                    </div>
-                  ),
-                )}
-                <button
-                  type="button"
-                  className="secondary-button"
-                  onClick={() =>
-                    setProductDraft((current) => ({
-                      ...current,
-                      qualificationCriteria: [
-                        ...current.qualificationCriteria,
-                        { label: "", guidance: "", required: true },
-                      ],
-                    }))
-                  }
-                >
-                  Add criterion
-                </button>
-              </div>
-              <footer>
-                <button
-                  type="button"
-                  className="secondary-button"
-                  onClick={() => setProductEditorOpen(false)}
-                >
-                  Cancel
-                </button>
-                <button className="primary-button">Save product</button>
-              </footer>
-            </form>
-          </div>
-        )}
+
       </main>
       <audio ref={remoteAudio} autoPlay />
     </div>
