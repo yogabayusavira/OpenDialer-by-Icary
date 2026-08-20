@@ -3150,14 +3150,17 @@ body,
   justify-content: space-between;
   padding: 0 10px;
   color: #fff;
-  border: 1px solid #3c3c3c;
+  border: 1px solid #24496f;
   border-radius: 8px;
-  background: #1d1d1d;
+  background: rgba(22, 38, 66, 0.7);
+  backdrop-filter: blur(8px);
   font-size: 12px;
   font-weight: 700;
+  transition: all 140ms ease;
 }
 .organization-switcher > button:hover {
-  background: #262626;
+  background: rgba(30, 58, 95, 0.85);
+  border-color: #3b82f6;
 }
 .organization-switcher svg,
 .nav-parent > svg {
@@ -4697,9 +4700,10 @@ body,
 .organization-switcher > button {
   height: 34px;
   padding: 0 10px;
-  border-color: #3a3a3a;
+  border-color: #24496f;
   border-radius: 8px;
-  background: #1a1a1a;
+  background: rgba(22, 38, 66, 0.7);
+  backdrop-filter: blur(8px);
 }
 
 .nav-item {
