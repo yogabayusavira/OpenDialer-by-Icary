@@ -1812,8 +1812,13 @@ textarea:focus-visible {
 }
 .workspace-select {
   color: #fff;
-  border-color: #3c3c3c;
-  background: #1d1d1d;
+  border-color: #24496f;
+  background: rgba(22, 38, 66, 0.7);
+  backdrop-filter: blur(8px);
+}
+.workspace-select:hover {
+  background: rgba(30, 58, 95, 0.85);
+  border-color: #3b82f6;
 }
 .brand-divider,
 .profile-row {
@@ -2451,16 +2456,19 @@ body,
   gap: 8px;
   padding: 0 10px;
   color: #fff;
-  border: 1px solid #3c3c3c;
+  border: 1px solid #24496f;
   border-radius: 8px;
-  background: #1d1d1d;
+  background: rgba(22, 38, 66, 0.7);
+  backdrop-filter: blur(8px);
   text-align: left;
   font: inherit;
   font-size: 12px;
   font-weight: 700;
+  transition: all 140ms ease;
 }
 .line-selector-trigger:hover {
-  background: #262626;
+  background: rgba(30, 58, 95, 0.85);
+  border-color: #3b82f6;
 }
 .line-selector-trigger > span {
   min-width: 0;
@@ -2471,7 +2479,7 @@ body,
 .line-selector-trigger > small,
 .line-picker-menu small {
   margin-left: auto;
-  color: #b8b8b8;
+  color: #60a5fa;
   font-size: 9px;
   font-weight: 800;
   letter-spacing: 0.04em;
@@ -2491,10 +2499,10 @@ body,
   right: 3px;
   left: 3px;
   padding: 5px;
-  border: 1px solid #3c3c3c;
+  border: 1px solid #24496f;
   border-radius: 8px;
-  background: #171717;
-  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.28);
+  background: #0f1c30;
+  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.35);
 }
 .line-picker-menu > button {
   width: 100%;
@@ -2512,12 +2520,12 @@ body,
   font-size: 11px;
 }
 .line-picker-menu > button.selected {
-  color: #0d0d0d;
-  background: #fff;
+  color: #fff;
+  background: #2563eb;
   font-weight: 800;
 }
 .line-picker-menu > button:hover {
-  background: #282828;
+  background: #172b44;
 }
 .line-picker-menu > button.selected:hover {
   background: #fff;
