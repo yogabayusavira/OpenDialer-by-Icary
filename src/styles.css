@@ -1812,13 +1812,12 @@ textarea:focus-visible {
 }
 .workspace-select {
   color: #fff;
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  background: rgba(20, 35, 60, 0.40);
-  backdrop-filter: blur(8px);
+  border: 1px solid #2e2e2e;
+  background: #171717;
 }
 .workspace-select:hover {
-  background: rgba(30, 50, 85, 0.55);
-  border-color: rgba(255, 255, 255, 0.15);
+  background: #242424;
+  border-color: #3e3e3e;
 }
 .brand-divider,
 .profile-row {
@@ -2488,10 +2487,9 @@ body,
   gap: 8px;
   padding: 0 10px;
   color: #fff;
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  border: 1px solid #2e2e2e;
   border-radius: 8px;
-  background: rgba(20, 35, 60, 0.40);
-  backdrop-filter: blur(8px);
+  background: #171717;
   text-align: left;
   font: inherit;
   font-size: 12px;
@@ -2499,8 +2497,8 @@ body,
   transition: all 140ms ease;
 }
 .line-selector-trigger:hover {
-  background: rgba(30, 50, 85, 0.55);
-  border-color: rgba(255, 255, 255, 0.15);
+  background: #242424;
+  border-color: #3e3e3e;
 }
 .line-selector-trigger > span {
   min-width: 0;
@@ -2511,7 +2509,7 @@ body,
 .line-selector-trigger > small,
 .line-picker-menu small {
   margin-left: auto;
-  color: #8da4c4;
+  color: #888;
   font-size: 9px;
   font-weight: 800;
   letter-spacing: 0.04em;
@@ -2531,10 +2529,10 @@ body,
   right: 3px;
   left: 3px;
   padding: 5px;
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  border: 1px solid #2e2e2e;
   border-radius: 8px;
-  background: #0d121c;
-  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.5);
+  background: #171717;
+  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.4);
 }
 .line-picker-menu > button {
   width: 100%;
@@ -2552,12 +2550,12 @@ body,
   font-size: 11px;
 }
 .line-picker-menu > button.selected {
-  color: #fff;
-  background: rgba(35, 60, 100, 0.6);
+  color: #0d0d0d;
+  background: #fff;
   font-weight: 800;
 }
 .line-picker-menu > button:hover {
-  background: rgba(255, 255, 255, 0.06);
+  background: #282828;
 }
 .line-picker-menu > button.selected:hover {
   background: #fff;
@@ -3182,17 +3180,16 @@ body,
   justify-content: space-between;
   padding: 0 10px;
   color: #fff;
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  border: 1px solid #2e2e2e;
   border-radius: 8px;
-  background: rgba(20, 35, 60, 0.40);
-  backdrop-filter: blur(8px);
+  background: #171717;
   font-size: 12px;
   font-weight: 700;
   transition: all 140ms ease;
 }
 .organization-switcher > button:hover {
-  background: rgba(30, 50, 85, 0.55);
-  border-color: rgba(255, 255, 255, 0.15);
+  background: #242424;
+  border-color: #3e3e3e;
 }
 .organization-switcher svg,
 .nav-parent > svg {
@@ -4731,10 +4728,9 @@ body,
 .organization-switcher > button {
   height: 34px;
   padding: 0 10px;
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  border: 1px solid #2e2e2e;
   border-radius: 8px;
-  background: rgba(20, 35, 60, 0.40);
-  backdrop-filter: blur(8px);
+  background: #171717;
 }
 
 .nav-item {
