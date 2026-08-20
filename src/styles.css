@@ -1357,48 +1357,97 @@ textarea:focus-visible {
 .vertical-lead {
   width: 100%;
   display: flex;
-  align-items: center;
-  gap: 7px;
-  padding: 7px 4px;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 10px 10px;
   color: #607087;
   border: 0;
   border-top: 1px solid #edf0f4;
   background: transparent;
   text-align: left;
+  transition: background 0.15s;
+  cursor: pointer;
+}
+.vertical-lead:hover {
+  background: #f4f8ff;
 }
 .vertical-lead span {
   display: grid;
+  flex-shrink: 0;
   place-items: center;
-  width: 22px;
-  height: 22px;
+  width: 34px;
+  height: 34px;
   color: #47627e;
-  border-radius: 6px;
+  border-radius: 9px;
   background: #e7eff8;
-  font-size: 8px;
+  font-size: 11px;
   font-weight: 800;
+  letter-spacing: -0.5px;
+}
+.vertical-lead-body {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
 }
 .vertical-lead b,
 .vertical-lead small {
   display: block;
 }
 .vertical-lead b {
-  color: #4b5a70;
-  font-size: 9px;
+  color: #1a2a3a;
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
-.vertical-lead small {
+.vertical-lead .lead-company {
+  color: #607087;
+  font-size: 11px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.vertical-lead .lead-role-phone {
+  display: flex;
+  align-items: center;
+  gap: 6px;
   margin-top: 2px;
+}
+.vertical-lead .lead-role {
   color: #98a2af;
-  font-size: 8px;
+  font-size: 10px;
+}
+.vertical-lead .lead-phone-tag {
+  color: #607087;
+  background: #edf0f4;
+  border-radius: 4px;
+  padding: 1px 5px;
+  font-size: 10px;
+  font-weight: 500;
+  font-family: monospace;
 }
 .vertical-lead em {
+  display: inline-block;
   margin-left: auto;
-  color: #317b62;
-  font-size: 8px;
+  flex-shrink: 0;
+  margin-top: 2px;
+  color: #1a8f63;
+  background: #dffbf0;
+  font-size: 9px;
   font-style: normal;
-  font-weight: 800;
+  font-weight: 700;
+  padding: 2px 7px;
+  border-radius: 20px;
+  letter-spacing: 0.3px;
+  text-transform: uppercase;
 }
 .vertical-lead.active {
-  background: #f7faff;
+  background: #f0f6ff;
+  border-left: 3px solid #1666d8;
+  padding-left: 7px;
 }
 .queue-ready {
   min-height: 410px;
@@ -1544,27 +1593,39 @@ textarea:focus-visible {
 }
 .vertical-lead {
   color: #d7e7fa;
-  border-top-color: #28517d;
+  border-top-color: #1e2a38;
+}
+.vertical-lead:hover {
+  background: #0d1a2a;
 }
 .vertical-lead b {
   color: #fff;
 }
-.vertical-lead small {
+.vertical-lead .lead-company {
   color: #a9c0da;
+}
+.vertical-lead .lead-role {
+  color: #6b84a0;
+}
+.vertical-lead .lead-phone-tag {
+  color: #a9c0da;
+  background: #1a2a3a;
 }
 .vertical-lead span {
   color: #fff;
   background: #2464a7;
 }
 .vertical-lead.active {
-  background: #1666d8;
+  background: #0d1e35;
+  border-left-color: #4a9eff;
 }
 .vertical-lead.active span {
-  background: #fff;
-  color: #1666d8;
+  background: #4a9eff;
+  color: #fff;
 }
 .vertical-lead em {
-  color: #8dffcf;
+  color: #0d1a2a;
+  background: #8dffcf;
 }
 .assist-title {
   background: #f6f8ff;
@@ -1614,10 +1675,10 @@ textarea:focus-visible {
   min-height: 540px;
 }
 .lead-list-only {
-  padding-top: 7px;
+  padding-top: 4px;
 }
 .lead-list-only .vertical-lead {
-  padding: 11px 4px;
+  padding: 10px 10px;
 }
 .lead-list-only .vertical-lead:first-child {
   border-top: 0;
@@ -1825,16 +1886,29 @@ textarea:focus-visible {
 .profile-row {
   border-color: #0d0f13;
 }
-.nav-item.active,
-.vertical-lead.active {
+.nav-item.active {
   color: #0d0d0d;
   background: #fff;
 }
-.nav-item.active .nav-icon,
-.vertical-lead.active b,
-.vertical-lead.active small,
-.vertical-lead.active em {
+.nav-item.active .nav-icon {
   color: #0d0d0d;
+}
+.vertical-lead.active b {
+  color: #fff;
+}
+.vertical-lead.active .lead-company {
+  color: #b0cde8;
+}
+.vertical-lead.active .lead-role {
+  color: #6b84a0;
+}
+.vertical-lead.active .lead-phone-tag {
+  color: #a9c0da;
+  background: #1a2a3a;
+}
+.vertical-lead.active em {
+  color: #0d1a2a;
+  background: #8dffcf;
 }
 .nav-item:hover {
   background: #080a0d;
@@ -2068,9 +2142,10 @@ body,
   }
 }
 .lead-list-only .vertical-lead.active {
-  margin: 5px 0;
-  padding: 11px 8px;
+  margin: 4px 0;
+  padding: 10px 7px;
   border-radius: 8px;
+  border-left: 3px solid #4a9eff;
 }
 .dialpad output {
   grid-column: 1 / -1;

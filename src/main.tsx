@@ -4552,11 +4552,15 @@ function App({ initialSipProfile }: { initialSipProfile?: SipProfile }) {
                             onClick={() => setSelectedLead(index)}
                           >
                             <span>{item.initials}</span>
-                            <div>
+                            <div className="vertical-lead-body">
                               <b>{item.name}</b>
-                              <small>
-                                {item.company} · {item.role}
-                              </small>
+                              <span className="lead-company">{item.company}</span>
+                              <div className="lead-role-phone">
+                                <span className="lead-role">{item.role}</span>
+                                {item.phone && (
+                                  <span className="lead-phone-tag">{item.phone}</span>
+                                )}
+                              </div>
                             </div>
                             {queueIndex === index && <em>Now</em>}
                           </button>
