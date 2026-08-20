@@ -245,6 +245,7 @@ function App({ initialSipProfile }: { initialSipProfile?: SipProfile }) {
     name: "",
     description: "",
     tags: "",
+    playbook: "",
     whoWeAre: "",
     whoWeHelp: "",
     elevatorPitch: "",
@@ -393,6 +394,7 @@ function App({ initialSipProfile }: { initialSipProfile?: SipProfile }) {
         name: product.name,
         description: product.description,
         tags: (product.tags || []).join(", "),
+        playbook: product.playbook || "",
         whoWeAre: product.whoWeAre || "",
         whoWeHelp: product.whoWeHelp || "",
         elevatorPitch: product.elevatorPitch || "",
@@ -415,6 +417,7 @@ function App({ initialSipProfile }: { initialSipProfile?: SipProfile }) {
         name: "",
         description: "",
         tags: "",
+        playbook: "",
         whoWeAre: "",
         whoWeHelp: "",
         elevatorPitch: "",
@@ -439,6 +442,7 @@ function App({ initialSipProfile }: { initialSipProfile?: SipProfile }) {
           .split(",")
           .map((t) => t.trim())
           .filter(Boolean),
+        playbook: productDraft.playbook,
         whoWeAre: productDraft.whoWeAre,
         whoWeHelp: productDraft.whoWeHelp,
         elevatorPitch: productDraft.elevatorPitch,
@@ -1680,13 +1684,13 @@ function App({ initialSipProfile }: { initialSipProfile?: SipProfile }) {
         ) : activeNav === "Products" ? (
           <section className="resource-page product-catalog-page">
             {productEditorOpen ? (
-              <>
-                <header className="home-header">
+              <div className="product-editor-view">
+                <header className="home-header product-editor-topbar">
                   <div>
                     <h1>{editingProductId ? "Edit product" : "New product"}</h1>
                     <p>
                       {editingProductId
-                        ? "Update details, sales context, and qualified lead checklist."
+                        ? "Update details, call playbook script, and qualified lead checklist."
                         : "Add a new product to your organization's catalog."}
                     </p>
                   </div>
@@ -1696,241 +1700,313 @@ function App({ initialSipProfile }: { initialSipProfile?: SipProfile }) {
                       className="secondary-button"
                       onClick={() => setProductEditorOpen(false)}
                     >
-                      Back to products
+                      Cancel
+                    </button>
+                    <button
+                      type="button"
+                      className="primary-button"
+                      onClick={(e) => {
+                        const form = e.currentTarget
+                          .closest(".product-editor-view")
+                          ?.querySelector("form");
+                        if (form) form.requestSubmit();
+                      }}
+                    >
+                      Save product
                     </button>
                   </div>
                 </header>
-                <form className="campaign-form-detail" onSubmit={saveProduct}>
-                  <label>
-                    Product name
-                    <input
-                      required
-                      autoFocus
-                      value={productDraft.name}
-                      onChange={(event) =>
-                        setProductDraft({
-                          ...productDraft,
-                          name: event.target.value,
-                        })
-                      }
-                      placeholder="Website Development"
-                    />
-                  </label>
-                  <label>
-                    Short description
-                    <textarea
-                      required
-                      value={productDraft.description}
-                      onChange={(event) =>
-                        setProductDraft({
-                          ...productDraft,
-                          description: event.target.value,
-                        })
-                      }
-                      placeholder="What it does in one clear sentence."
-                    />
-                  </label>
-                  <label>
-                    Tags (comma-separated)
-                    <input
-                      value={productDraft.tags}
-                      onChange={(event) =>
-                        setProductDraft({
-                          ...productDraft,
-                          tags: event.target.value,
-                        })
-                      }
-                      placeholder="Website design, Local SEO, AI receptionist"
-                    />
-                  </label>
-                  <div className="modal-section" style={{ padding: 0, border: 0 }}>
-                    <h3>Sales context</h3>
-                    <label>
-                      Who we are
+
+                <form className="product-editor-form" onSubmit={saveProduct}>
+                  {/* Card 1: Product Details */}
+                  <div className="product-editor-card">
+                    <div className="editor-card-head">
+                      <h3>1. Product Details</h3>
+                      <span>Core identity and overview of what this product solves.</span>
+                    </div>
+                    <div className="form-grid-2col">
+                      <label className="form-field">
+                        <span className="field-label">Product name *</span>
+                        <input
+                          required
+                          autoFocus
+                          value={productDraft.name}
+                          onChange={(event) =>
+                            setProductDraft({
+                              ...productDraft,
+                              name: event.target.value,
+                            })
+                          }
+                          placeholder="e.g. Website Development"
+                        />
+                      </label>
+                      <label className="form-field">
+                        <span className="field-label">Tags (comma-separated)</span>
+                        <input
+                          value={productDraft.tags}
+                          onChange={(event) =>
+                            setProductDraft({
+                              ...productDraft,
+                              tags: event.target.value,
+                            })
+                          }
+                          placeholder="e.g. Website design, Local SEO, AI"
+                        />
+                      </label>
+                    </div>
+                    <label className="form-field">
+                      <span className="field-label">Short description (What it solves) *</span>
                       <textarea
-                        value={productDraft.whoWeAre}
+                        required
+                        rows={2}
+                        value={productDraft.description}
                         onChange={(event) =>
                           setProductDraft({
                             ...productDraft,
-                            whoWeAre: event.target.value,
+                            description: event.target.value,
                           })
                         }
-                      />
-                    </label>
-                    <label>
-                      Who we help (Ideal customer)
-                      <textarea
-                        value={productDraft.whoWeHelp}
-                        onChange={(event) =>
-                          setProductDraft({
-                            ...productDraft,
-                            whoWeHelp: event.target.value,
-                          })
-                        }
-                        placeholder="Owner-led Austin service businesses with an outdated website."
-                      />
-                    </label>
-                    <label>
-                      Elevator pitch
-                      <textarea
-                        value={productDraft.elevatorPitch}
-                        onChange={(event) =>
-                          setProductDraft({
-                            ...productDraft,
-                            elevatorPitch: event.target.value,
-                          })
-                        }
-                      />
-                    </label>
-                    <label>
-                      Common objections
-                      <textarea
-                        value={productDraft.commonObjections}
-                        onChange={(event) =>
-                          setProductDraft({
-                            ...productDraft,
-                            commonObjections: event.target.value,
-                          })
-                        }
+                        placeholder="What it does and solves in one or two clear sentences."
                       />
                     </label>
                   </div>
-                  <div className="booking-fields">
-                    <label>
-                      Booking provider
-                      <select
-                        value={productDraft.bookingProvider}
+
+                  {/* Card 2: Call Playbook / Script */}
+                  <div className="product-editor-card">
+                    <div className="editor-card-head">
+                      <h3>2. Call Playbook / Script</h3>
+                      <span>The conversation flow and pitch structure reps use when calling for this product.</span>
+                    </div>
+                    <label className="form-field">
+                      <span className="field-label">Call script & conversation flow</span>
+                      <textarea
+                        rows={5}
+                        className="playbook-textarea"
+                        value={productDraft.playbook}
                         onChange={(event) =>
                           setProductDraft({
                             ...productDraft,
-                            bookingProvider: event.target.value,
+                            playbook: event.target.value,
                           })
+                        }
+                        placeholder="1. Introduction: Hi [Lead Name], this is [Name] with [Company]...\n2. Problem Discovery: When prospective clients search for your services today...\n3. Value Proposition: We help businesses...\n4. Close: Would you have 15 minutes this Thursday for a quick audit?"
+                      />
+                    </label>
+                  </div>
+
+                  {/* Card 3: Sales Context */}
+                  <div className="product-editor-card">
+                    <div className="editor-card-head">
+                      <h3>3. Sales Context & Pitching</h3>
+                      <span>Contextual answers, ideal buyer profiles, and objection handling for live calls.</span>
+                    </div>
+                    <div className="form-grid-2col">
+                      <label className="form-field">
+                        <span className="field-label">Who we are</span>
+                        <textarea
+                          rows={3}
+                          value={productDraft.whoWeAre}
+                          onChange={(event) =>
+                            setProductDraft({
+                              ...productDraft,
+                              whoWeAre: event.target.value,
+                            })
+                          }
+                          placeholder="e.g. A hands-on web studio for local service businesses."
+                        />
+                      </label>
+                      <label className="form-field">
+                        <span className="field-label">Who we help (Ideal customer)</span>
+                        <textarea
+                          rows={3}
+                          value={productDraft.whoWeHelp}
+                          onChange={(event) =>
+                            setProductDraft({
+                              ...productDraft,
+                              whoWeHelp: event.target.value,
+                            })
+                          }
+                          placeholder="e.g. Owner-led Austin service businesses with an outdated website."
+                        />
+                      </label>
+                      <label className="form-field">
+                        <span className="field-label">Elevator pitch</span>
+                        <textarea
+                          rows={3}
+                          value={productDraft.elevatorPitch}
+                          onChange={(event) =>
+                            setProductDraft({
+                              ...productDraft,
+                              elevatorPitch: event.target.value,
+                            })
+                          }
+                          placeholder="e.g. We turn an outdated site into a clear path from search to booked work."
+                        />
+                      </label>
+                      <label className="form-field">
+                        <span className="field-label">Common objections</span>
+                        <textarea
+                          rows={3}
+                          value={productDraft.commonObjections}
+                          onChange={(event) =>
+                            setProductDraft({
+                              ...productDraft,
+                              commonObjections: event.target.value,
+                            })
+                          }
+                          placeholder="e.g. We already have a site / It sounds expensive."
+                        />
+                      </label>
+                    </div>
+                  </div>
+
+                  {/* Card 4: Booking & Qualification */}
+                  <div className="product-editor-card">
+                    <div className="editor-card-head">
+                      <h3>4. Meeting Booking & Qualification Checklist</h3>
+                      <span>Calendar link and qualification criteria verified before booking meetings.</span>
+                    </div>
+                    <div className="form-grid-2col">
+                      <label className="form-field">
+                        <span className="field-label">Booking provider</span>
+                        <select
+                          value={productDraft.bookingProvider}
+                          onChange={(event) =>
+                            setProductDraft({
+                              ...productDraft,
+                              bookingProvider: event.target.value,
+                            })
+                          }
+                        >
+                          <option value="calcom">Cal.com</option>
+                          <option value="calendly">Calendly</option>
+                        </select>
+                      </label>
+                      <label className="form-field">
+                        <span className="field-label">Booking link URL</span>
+                        <input
+                          type="url"
+                          value={productDraft.bookingUrl}
+                          onChange={(event) =>
+                            setProductDraft({
+                              ...productDraft,
+                              bookingUrl: event.target.value,
+                            })
+                          }
+                          placeholder="https://cal.com/..."
+                        />
+                      </label>
+                    </div>
+
+                    <div className="checklist-builder">
+                      <span className="field-label">Qualified lead checklist</span>
+                      <div className="criteria-list">
+                        {productDraft.qualificationCriteria.map(
+                          (criterion, index) => (
+                            <div className="criterion-card-row" key={index}>
+                              <input
+                                className="criterion-input"
+                                value={criterion.label}
+                                onChange={(event) =>
+                                  setProductDraft((current) => ({
+                                    ...current,
+                                    qualificationCriteria:
+                                      current.qualificationCriteria.map(
+                                        (item, itemIndex) =>
+                                          itemIndex === index
+                                            ? {
+                                                ...item,
+                                                label: event.target.value,
+                                              }
+                                            : item,
+                                      ),
+                                  }))
+                                }
+                                placeholder="Criterion (e.g. Active local service business)"
+                              />
+                              <input
+                                className="criterion-guidance"
+                                value={criterion.guidance || ""}
+                                onChange={(event) =>
+                                  setProductDraft((current) => ({
+                                    ...current,
+                                    qualificationCriteria:
+                                      current.qualificationCriteria.map(
+                                        (item, itemIndex) =>
+                                          itemIndex === index
+                                            ? {
+                                                ...item,
+                                                guidance: event.target.value,
+                                              }
+                                            : item,
+                                      ),
+                                  }))
+                                }
+                                placeholder="Optional rep guidance"
+                              />
+                              <label className="criterion-req-label">
+                                <input
+                                  type="checkbox"
+                                  checked={criterion.required}
+                                  onChange={(event) =>
+                                    setProductDraft((current) => ({
+                                      ...current,
+                                      qualificationCriteria:
+                                        current.qualificationCriteria.map(
+                                          (item, itemIndex) =>
+                                            itemIndex === index
+                                              ? {
+                                                  ...item,
+                                                  required:
+                                                    event.target.checked,
+                                                }
+                                              : item,
+                                        ),
+                                    }))
+                                  }
+                                />
+                                <span>Req</span>
+                              </label>
+                              <button
+                                type="button"
+                                className="icon-button destructive-button"
+                                aria-label="Remove criterion"
+                                onClick={() =>
+                                  setProductDraft((current) => ({
+                                    ...current,
+                                    qualificationCriteria:
+                                      current.qualificationCriteria.filter(
+                                        (_, itemIndex) => itemIndex !== index,
+                                      ),
+                                  }))
+                                }
+                              >
+                                <Trash2 size={14} />
+                              </button>
+                            </div>
+                          ),
+                        )}
+                      </div>
+                      <button
+                        type="button"
+                        className="secondary-button add-criterion-btn"
+                        onClick={() =>
+                          setProductDraft((current) => ({
+                            ...current,
+                            qualificationCriteria: [
+                              ...current.qualificationCriteria,
+                              { label: "", guidance: "", required: true },
+                            ],
+                          }))
                         }
                       >
-                        <option value="calcom">Cal.com</option>
-                        <option value="calendly">Calendly</option>
-                      </select>
-                    </label>
-                    <label>
-                      Booking link
-                      <input
-                        type="url"
-                        value={productDraft.bookingUrl}
-                        onChange={(event) =>
-                          setProductDraft({
-                            ...productDraft,
-                            bookingUrl: event.target.value,
-                          })
-                        }
-                        placeholder="https://cal.com/..."
-                      />
-                    </label>
-                  </div>
-                  <div className="criteria-editor">
-                    <div>
-                      <h3>Qualified lead checklist</h3>
-                      <p>
-                        These appear before the calendar in a live call.
-                      </p>
+                        <Plus size={14} /> Add criterion
+                      </button>
                     </div>
-                    {productDraft.qualificationCriteria.map(
-                      (criterion, index) => (
-                        <div className="criterion-row" key={index}>
-                          <input
-                            value={criterion.label}
-                            onChange={(event) =>
-                              setProductDraft((current) => ({
-                                ...current,
-                                qualificationCriteria:
-                                  current.qualificationCriteria.map(
-                                    (item, itemIndex) =>
-                                      itemIndex === index
-                                        ? {
-                                            ...item,
-                                            label: event.target.value,
-                                          }
-                                        : item,
-                                  ),
-                              }))
-                            }
-                            placeholder="Qualification criterion"
-                          />
-                          <input
-                            value={criterion.guidance || ""}
-                            onChange={(event) =>
-                              setProductDraft((current) => ({
-                                ...current,
-                                qualificationCriteria:
-                                  current.qualificationCriteria.map(
-                                    (item, itemIndex) =>
-                                      itemIndex === index
-                                        ? {
-                                            ...item,
-                                            guidance: event.target.value,
-                                          }
-                                        : item,
-                                  ),
-                              }))
-                            }
-                            placeholder="Optional guidance"
-                          />
-                          <label>
-                            <input
-                              type="checkbox"
-                              checked={criterion.required}
-                              onChange={(event) =>
-                                setProductDraft((current) => ({
-                                  ...current,
-                                  qualificationCriteria:
-                                    current.qualificationCriteria.map(
-                                      (item, itemIndex) =>
-                                        itemIndex === index
-                                          ? {
-                                              ...item,
-                                              required:
-                                                event.target.checked,
-                                            }
-                                          : item,
-                                    ),
-                                }))
-                              }
-                            />{" "}
-                            Required
-                          </label>
-                          <button
-                            type="button"
-                            onClick={() =>
-                              setProductDraft((current) => ({
-                                ...current,
-                                qualificationCriteria:
-                                  current.qualificationCriteria.filter(
-                                    (_, itemIndex) => itemIndex !== index,
-                                  ),
-                              }))
-                            }
-                          >
-                            Remove
-                          </button>
-                        </div>
-                      ),
-                    )}
-                    <button
-                      type="button"
-                      className="secondary-button"
-                      onClick={() =>
-                        setProductDraft((current) => ({
-                          ...current,
-                          qualificationCriteria: [
-                            ...current.qualificationCriteria,
-                            { label: "", guidance: "", required: true },
-                          ],
-                        }))
-                      }
-                    >
-                      Add criterion
-                    </button>
                   </div>
-                  <div className="form-actions" style={{ marginTop: "24px" }}>
+
+                  {/* Bottom Action Footer */}
+                  <div className="product-editor-footer">
                     <button
                       type="button"
                       className="secondary-button"
@@ -1943,7 +2019,7 @@ function App({ initialSipProfile }: { initialSipProfile?: SipProfile }) {
                     </button>
                   </div>
                 </form>
-              </>
+              </div>
             ) : (
               <>
                 <header className="home-header">

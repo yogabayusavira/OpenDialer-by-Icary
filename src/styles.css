@@ -5198,3 +5198,166 @@ body,
   color: #fff;
   font-weight: 600;
 }
+
+/* Product Editor In-Page Structured View */
+.product-editor-view {
+  max-width: 900px;
+  width: 100%;
+}
+.product-editor-topbar {
+  margin-bottom: 24px;
+}
+.product-editor-form {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+.product-editor-card {
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+}
+.editor-card-head {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid #f3f4f6;
+}
+.editor-card-head h3 {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 700;
+  color: #111;
+  letter-spacing: -0.01em;
+}
+.editor-card-head span {
+  font-size: 12px;
+  color: #6b7280;
+}
+.form-grid-2col {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+@media (max-width: 768px) {
+  .form-grid-2col {
+    grid-template-columns: 1fr;
+  }
+}
+.form-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.form-field .field-label {
+  font-size: 11px;
+  font-weight: 700;
+  color: #374151;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.form-field input,
+.form-field select,
+.form-field textarea {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 10px 12px;
+  color: #111;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  background: #fff;
+  font: inherit;
+  font-size: 13px;
+  line-height: 1.5;
+  outline: none;
+  transition: border-color 120ms ease, box-shadow 120ms ease;
+}
+.form-field input:focus,
+.form-field select:focus,
+.form-field textarea:focus {
+  border-color: #111;
+  box-shadow: 0 0 0 3px rgba(17, 17, 17, 0.08);
+}
+.form-field input,
+.form-field select {
+  height: 40px;
+}
+.form-field textarea {
+  resize: vertical;
+}
+.playbook-textarea {
+  font-family: inherit;
+  line-height: 1.6;
+  white-space: pre-wrap;
+}
+.checklist-builder {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 4px;
+}
+.criteria-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.criterion-card-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 12px;
+  background: #f9fafb;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+}
+.criterion-card-row .criterion-input {
+  flex: 1.2;
+  min-width: 0;
+  height: 36px;
+  padding: 6px 10px;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  font-size: 12px;
+}
+.criterion-card-row .criterion-guidance {
+  flex: 1;
+  min-width: 0;
+  height: 36px;
+  padding: 6px 10px;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  font-size: 12px;
+}
+.criterion-req-label {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px;
+  font-weight: 600;
+  color: #374151;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.criterion-req-label input[type="checkbox"] {
+  width: 14px;
+  height: 14px;
+  accent-color: #111;
+}
+.add-criterion-btn {
+  align-self: flex-start;
+  font-size: 12px;
+  padding: 6px 12px;
+}
+.product-editor-footer {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 12px;
+  padding: 16px 0 32px;
+}

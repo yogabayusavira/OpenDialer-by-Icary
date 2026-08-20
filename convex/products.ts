@@ -28,6 +28,7 @@ const productFields = {
   commonObjections: v.optional(v.string()),
   faq: v.optional(v.string()),
   trainingNotes: v.optional(v.string()),
+  playbook: v.optional(v.string()),
   bookingProvider: v.optional(
     v.union(v.literal("calcom"), v.literal("calendly")),
   ),

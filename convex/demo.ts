@@ -37,6 +37,8 @@ const companionProducts = [
       "We already have a website. / We get referrals. / It sounds expensive.",
     faq: "Typical launch: four to six weeks.",
     trainingNotes: "Ask where new work comes from before presenting the site.",
+    playbook:
+      "1. Introduction: Hi [Lead Name], this is [Your Name] with [Company]. I noticed your site while researching local service providers in the area.\n2. Problem Discovery: When prospective clients search for your services today, are you satisfied with how many convert directly into calls and bookings?\n3. Value Proposition: We help owner-led businesses revamp their outdated web presence into a high-converting channel that drives qualified leads directly onto your calendar.\n4. Close: Would you have 15 minutes this Thursday to walk through a quick audit of your current web presence?",
     bookingProvider: "calcom" as const,
     bookingUrl: "https://cal.com",
     qualificationCriteria: [
@@ -70,6 +72,8 @@ const companionProducts = [
       "Our current host is cheap. / We have never had an issue.",
     faq: "Migration is planned and handled for the client.",
     trainingNotes: "Lead with risk reduction, not technical detail.",
+    playbook:
+      "1. Introduction: Hi [Lead Name], I'm calling from [Company] regarding your web infrastructure and hosting security.\n2. Discovery: When was the last time your website's disaster recovery and server speed were benchmarked?\n3. Value: We provide fully managed, high-speed cloud infrastructure with 24/7 uptime monitoring and a dedicated contact number.\n4. Close: Can I send you a 1-page comparison and schedule a 10-minute check-in next week?",
     bookingProvider: "calcom" as const,
     bookingUrl: "https://cal.com",
     qualificationCriteria: [
@@ -97,6 +101,8 @@ const companionProducts = [
     commonObjections: "Customers want a human. / We already use voicemail.",
     faq: "It can route urgent calls and book meetings.",
     trainingNotes: "Ask about missed calls, voicemail, and after-hours cover.",
+    playbook:
+      "1. Introduction: Hi [Lead Name], I'm reaching out because many service companies lose up to 30% of potential leads when calls go to voicemail after 5 PM.\n2. Discovery: How does your team currently handle incoming calls during peak hours or weekends?\n3. Solution: Our AI Voice Receptionist answers instantly, qualifies the caller, and books the appointment directly into your calendar without hiring full-time staff.\n4. Next Step: Let's do a live 3-minute test call so you can hear how natural it sounds. How does tomorrow at 10 AM sound?",
     bookingProvider: "calcom" as const,
     bookingUrl: "https://cal.com",
     qualificationCriteria: [
