@@ -1812,13 +1812,13 @@ textarea:focus-visible {
 }
 .workspace-select {
   color: #fff;
-  border-color: #24496f;
-  background: rgba(22, 38, 66, 0.7);
+  border-color: #1c283d;
+  background: rgba(16, 24, 38, 0.75);
   backdrop-filter: blur(8px);
 }
 .workspace-select:hover {
-  background: rgba(30, 58, 95, 0.85);
-  border-color: #3b82f6;
+  background: rgba(22, 33, 52, 0.9);
+  border-color: #2b4366;
 }
 .brand-divider,
 .profile-row {
@@ -2456,9 +2456,9 @@ body,
   gap: 8px;
   padding: 0 10px;
   color: #fff;
-  border: 1px solid #24496f;
+  border: 1px solid #1c283d;
   border-radius: 8px;
-  background: rgba(22, 38, 66, 0.7);
+  background: rgba(16, 24, 38, 0.75);
   backdrop-filter: blur(8px);
   text-align: left;
   font: inherit;
@@ -2467,8 +2467,8 @@ body,
   transition: all 140ms ease;
 }
 .line-selector-trigger:hover {
-  background: rgba(30, 58, 95, 0.85);
-  border-color: #3b82f6;
+  background: rgba(22, 33, 52, 0.9);
+  border-color: #2b4366;
 }
 .line-selector-trigger > span {
   min-width: 0;
@@ -2479,7 +2479,7 @@ body,
 .line-selector-trigger > small,
 .line-picker-menu small {
   margin-left: auto;
-  color: #60a5fa;
+  color: #8da4c4;
   font-size: 9px;
   font-weight: 800;
   letter-spacing: 0.04em;
@@ -2499,10 +2499,10 @@ body,
   right: 3px;
   left: 3px;
   padding: 5px;
-  border: 1px solid #24496f;
+  border: 1px solid #1c283d;
   border-radius: 8px;
-  background: #0f1c30;
-  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.35);
+  background: #0f1523;
+  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.4);
 }
 .line-picker-menu > button {
   width: 100%;
@@ -2521,11 +2521,11 @@ body,
 }
 .line-picker-menu > button.selected {
   color: #fff;
-  background: #2563eb;
+  background: #1c2e4a;
   font-weight: 800;
 }
 .line-picker-menu > button:hover {
-  background: #172b44;
+  background: #162032;
 }
 .line-picker-menu > button.selected:hover {
   background: #fff;
@@ -3150,17 +3150,17 @@ body,
   justify-content: space-between;
   padding: 0 10px;
   color: #fff;
-  border: 1px solid #24496f;
+  border: 1px solid #1c283d;
   border-radius: 8px;
-  background: rgba(22, 38, 66, 0.7);
+  background: rgba(16, 24, 38, 0.75);
   backdrop-filter: blur(8px);
   font-size: 12px;
   font-weight: 700;
   transition: all 140ms ease;
 }
 .organization-switcher > button:hover {
-  background: rgba(30, 58, 95, 0.85);
-  border-color: #3b82f6;
+  background: rgba(22, 33, 52, 0.9);
+  border-color: #2b4366;
 }
 .organization-switcher svg,
 .nav-parent > svg {
@@ -4700,9 +4700,9 @@ body,
 .organization-switcher > button {
   height: 34px;
   padding: 0 10px;
-  border-color: #24496f;
+  border-color: #1c283d;
   border-radius: 8px;
-  background: rgba(22, 38, 66, 0.7);
+  background: rgba(16, 24, 38, 0.75);
   backdrop-filter: blur(8px);
 }
 
