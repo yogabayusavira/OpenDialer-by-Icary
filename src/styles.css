@@ -1690,6 +1690,7 @@ textarea:focus-visible {
   background: #282828;
 }
 .sidebar {
+  position: relative;
   grid-column: 1;
   grid-row: 2;
   height: calc(100vh - 48px);
@@ -1700,6 +1701,27 @@ textarea:focus-visible {
   overflow: hidden;
   padding-top: 0;
   box-sizing: border-box;
+  background-color: #0d0d0d;
+}
+.sidebar::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  width: 100%;
+  height: 100%;
+  background-image: url('/Sidebar%20BG.png');
+  background-size: cover;
+  background-position: bottom center;
+  background-repeat: no-repeat;
+  opacity: 0.40;
+  pointer-events: none;
+  z-index: 0;
+}
+.sidebar > * {
+  position: relative;
+  z-index: 1;
 }
 .sidebar > .brand-row {
   display: none;
@@ -4755,7 +4777,7 @@ body,
   flex-shrink: 0;
   margin-top: auto;
   padding: 8px 10px 16px;
-  background: #0d0d0d;
+  background: transparent;
 }
 
 .sidebar-bottom .nav-item {
