@@ -22,6 +22,8 @@ import {
   Bookmark,
   CircleHelp,
   Clock3,
+  Edit2,
+  ExternalLink,
   FileText,
   Home,
   KeyRound,
@@ -256,6 +258,8 @@ function App({ initialSipProfile }: { initialSipProfile?: SipProfile }) {
     bookingUrl: "https://cal.com",
     qualificationCriteria: [] as { label: string; guidance?: string; required: boolean }[],
   });
+  const [selectedProductId, setSelectedProductId] =
+    useState<Id<"products"> | null>(null);
   const [editingProductId, setEditingProductId] =
     useState<Id<"products"> | null>(null);
   const [productEditorOpen, setProductEditorOpen] = useState(false);
@@ -390,9 +394,10 @@ function App({ initialSipProfile }: { initialSipProfile?: SipProfile }) {
   const openProductEditor = (product?: (typeof products)[number]) => {
     if (product) {
       setEditingProductId(product._id);
+      setSelectedProductId(product._id);
       setProductDraft({
         name: product.name,
-        description: product.description,
+        description: product.description || "",
         tags: (product.tags || []).join(", "),
         playbook: product.playbook || "",
         whoWeAre: product.whoWeAre || "",
@@ -462,9 +467,13 @@ function App({ initialSipProfile }: { initialSipProfile?: SipProfile }) {
           }))
           .filter((c) => Boolean(c.label)),
       };
-      if (editingProductId)
+      if (editingProductId) {
         await updateProduct({ productId: editingProductId, ...data });
-      else await createProduct(data);
+        setSelectedProductId(editingProductId);
+      } else {
+        const newId = await createProduct(data);
+        if (newId) setSelectedProductId(newId);
+      }
       setProductEditorOpen(false);
     } catch (error) {
       setResourceError(
@@ -1169,6 +1178,8 @@ function App({ initialSipProfile }: { initialSipProfile?: SipProfile }) {
               className={`nav-item ${activeNav === "Products" ? "active" : ""}`}
               onClick={() => {
                 setSelectedCampaignId(null);
+                setSelectedProductId(null);
+                setProductEditorOpen(false);
                 setActiveNav("Products");
               }}
             >
@@ -1685,7 +1696,14 @@ function App({ initialSipProfile }: { initialSipProfile?: SipProfile }) {
           <section className="resource-page product-catalog-page">
             {productEditorOpen ? (
               <div className="product-editor-view">
-                <header className="home-header product-editor-topbar">
+                <header className="campaign-detail-header product-editor-topbar">
+                  <button
+                    type="button"
+                    className="back-button"
+                    onClick={() => setProductEditorOpen(false)}
+                  >
+                    <ChevronLeft size={16} /> {selectedProductId ? "Back to product" : "Products"}
+                  </button>
                   <div>
                     <h1>{editingProductId ? "Edit product" : "New product"}</h1>
                     <p>
@@ -2020,6 +2038,207 @@ function App({ initialSipProfile }: { initialSipProfile?: SipProfile }) {
                   </div>
                 </form>
               </div>
+            ) : selectedProductId ? (
+              (() => {
+                const selectedProduct = products.find((p) => p._id === selectedProductId);
+                if (!selectedProduct) {
+                  return (
+                    <div className="portfolio-empty">
+                      <p>Product not found.</p>
+                      <button className="primary-button" onClick={() => setSelectedProductId(null)}>
+                        Back to products
+                      </button>
+                    </div>
+                  );
+                }
+                return (
+                  <div className="product-detail-view">
+                    <header className="campaign-detail-header">
+                      <button
+                        type="button"
+                        className="back-button"
+                        onClick={() => setSelectedProductId(null)}
+                      >
+                        <ChevronLeft size={16} /> Products
+                      </button>
+                      <div>
+                        <h1>{selectedProduct.name}</h1>
+                        <p>
+                          {selectedProduct.description ||
+                            "Product overview, live call playbook, and qualification criteria."}
+                        </p>
+                      </div>
+                      <div className="header-actions">
+                        <button
+                          type="button"
+                          className="secondary-button"
+                          onClick={() => openProductEditor(selectedProduct)}
+                        >
+                          <Edit2 size={14} /> Edit product
+                        </button>
+                        <button
+                          type="button"
+                          className="secondary-button destructive-button"
+                          onClick={() => {
+                            if (
+                              window.confirm(
+                                `Delete ${selectedProduct.name}? It will be unlinked from all campaigns.`,
+                              )
+                            ) {
+                              void removeProduct({ productId: selectedProduct._id }).then(() =>
+                                setSelectedProductId(null),
+                              );
+                            }
+                          }}
+                        >
+                          <Trash2 size={14} /> Delete
+                        </button>
+                      </div>
+                    </header>
+
+                    <div className="product-detail-content">
+                      {/* Card 1: Product Details */}
+                      <div className="product-editor-card">
+                        <div className="editor-card-head">
+                          <h3>1. Product Details</h3>
+                          <span>Core identity and overview of what this product solves.</span>
+                        </div>
+                        <div className="product-detail-grid">
+                          <div className="product-detail-item">
+                            <span className="field-label">Product Name</span>
+                            <strong>{selectedProduct.name}</strong>
+                          </div>
+                          {selectedProduct.tags && selectedProduct.tags.length > 0 && (
+                            <div className="product-detail-item">
+                              <span className="field-label">Tags</span>
+                              <div className="campaign-card-products" style={{ marginTop: 4 }}>
+                                {selectedProduct.tags.map((tag: string) => (
+                                  <span key={tag} className="campaign-product-pill">
+                                    {tag}
+                                  </span>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+                          <div className="product-detail-item" style={{ gridColumn: "1 / -1" }}>
+                            <span className="field-label">Short Description</span>
+                            <p className="detail-text-block">
+                              {selectedProduct.description || "No description provided."}
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Card 2: Call Playbook / Script */}
+                      <div className="product-editor-card">
+                        <div className="editor-card-head">
+                          <h3>2. Call Playbook / Script</h3>
+                          <span>The conversation flow and pitch structure reps use when calling for this product.</span>
+                        </div>
+                        <div className="playbook-view-box">
+                          {selectedProduct.playbook ? (
+                            <pre className="playbook-script-pre">{selectedProduct.playbook}</pre>
+                          ) : (
+                            <p className="empty-copy">No script defined yet. Click "Edit product" to add a conversation flow.</p>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Card 3: Sales Context & Pitching */}
+                      <div className="product-editor-card">
+                        <div className="editor-card-head">
+                          <h3>3. Sales Context & Pitching</h3>
+                          <span>Contextual answers, ideal buyer profiles, and objection handling for live calls.</span>
+                        </div>
+                        <div className="form-grid-2col">
+                          <div className="product-detail-item">
+                            <span className="field-label">Who We Are</span>
+                            <p className="detail-text-block">
+                              {selectedProduct.whoWeAre || "Not specified."}
+                            </p>
+                          </div>
+                          <div className="product-detail-item">
+                            <span className="field-label">Who We Help (Ideal Customer)</span>
+                            <p className="detail-text-block">
+                              {selectedProduct.whoWeHelp || "Not specified."}
+                            </p>
+                          </div>
+                          <div className="product-detail-item">
+                            <span className="field-label">Elevator Pitch</span>
+                            <p className="detail-text-block">
+                              {selectedProduct.elevatorPitch || "Not specified."}
+                            </p>
+                          </div>
+                          <div className="product-detail-item">
+                            <span className="field-label">Common Objections</span>
+                            <p className="detail-text-block">
+                              {selectedProduct.commonObjections || "Not specified."}
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Card 4: Meeting Booking & Qualification */}
+                      <div className="product-editor-card">
+                        <div className="editor-card-head">
+                          <h3>4. Meeting Booking & Qualification Checklist</h3>
+                          <span>Calendar integration and qualification criteria verified before booking meetings.</span>
+                        </div>
+                        <div className="form-grid-2col">
+                          <div className="product-detail-item">
+                            <span className="field-label">Booking Provider</span>
+                            <strong>{selectedProduct.bookingProvider === "calendly" ? "Calendly" : "Cal.com"}</strong>
+                          </div>
+                          <div className="product-detail-item">
+                            <span className="field-label">Booking Calendar URL</span>
+                            {selectedProduct.bookingUrl ? (
+                              <a
+                                href={selectedProduct.bookingUrl}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="booking-link"
+                              >
+                                {selectedProduct.bookingUrl} <ExternalLink size={12} />
+                              </a>
+                            ) : (
+                              <span className="empty-copy" style={{ padding: 0 }}>No booking URL configured</span>
+                            )}
+                          </div>
+                        </div>
+                        <div className="product-detail-checklist">
+                          <span className="field-label" style={{ marginBottom: 8, display: "block" }}>
+                            Qualified Lead Checklist
+                          </span>
+                          {selectedProduct.qualificationCriteria && selectedProduct.qualificationCriteria.length > 0 ? (
+                            <div className="criteria-list">
+                              {selectedProduct.qualificationCriteria.map((c, i) => (
+                                <div className="criterion-card-row" key={i}>
+                                  <CheckCircle2 size={16} color={c.required ? "#111" : "#888"} />
+                                  <div style={{ flex: 1 }}>
+                                    <strong>{c.label}</strong>
+                                    {c.guidance && (
+                                      <span style={{ display: "block", fontSize: 11, color: "#666" }}>
+                                        {c.guidance}
+                                      </span>
+                                    )}
+                                  </div>
+                                  {c.required && (
+                                    <span className="campaign-product-pill" style={{ background: "#111", color: "#fff", fontSize: 10 }}>
+                                      Required
+                                    </span>
+                                  )}
+                                </div>
+                              ))}
+                            </div>
+                          ) : (
+                            <p className="empty-copy">No qualification criteria set.</p>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })()
             ) : (
               <>
                 <header className="home-header">
@@ -2044,7 +2263,7 @@ function App({ initialSipProfile }: { initialSipProfile?: SipProfile }) {
                         <button
                           type="button"
                           className="campaign-card-main"
-                          onClick={() => openProductEditor(product)}
+                          onClick={() => setSelectedProductId(product._id)}
                         >
                           <div className="campaign-card-header">
                             <div className="campaign-card-title-group">
@@ -2073,9 +2292,9 @@ function App({ initialSipProfile }: { initialSipProfile?: SipProfile }) {
                           <button
                             type="button"
                             className="text-button card-open-action"
-                            onClick={() => openProductEditor(product)}
+                            onClick={() => setSelectedProductId(product._id)}
                           >
-                            Edit product <ChevronRight size={14} />
+                            View product <ChevronRight size={14} />
                           </button>
                           <button
                             type="button"
