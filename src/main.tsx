@@ -42,6 +42,7 @@ import {
   Radio,
   Search,
   Settings,
+  ShieldCheck,
   Trash2,
   UserRound,
   Users,
@@ -83,9 +84,9 @@ export type CallingLine = {
 
 const emptySipProfile: SipProfile = {
   provider: "sip",
-  transport: "webrtc",
+  transport: "udp",
   server: "",
-  port: 8089,
+  port: 5060,
   domain: "",
   username: "",
   authUsername: "",
@@ -101,10 +102,10 @@ const defaultCallingLines: CallingLine[] = [
     id: "sip-primary",
     number: "+1 (415) 890-2144",
     provider: "SIP",
-    transport: "webrtc",
+    transport: "udp",
     server: "pbx.icary.io",
     domain: "pbx.icary.io",
-    port: 8089,
+    port: 5060,
     extension: "1001",
     status: "disconnected",
   },
@@ -1796,17 +1797,10 @@ function App({ initialSipProfile }: { initialSipProfile?: SipProfile }) {
                               <div className="transport-pill-group">
                                 <button
                                   type="button"
-                                  className={`transport-pill ${sipDraft.transport === "webrtc" ? "active" : ""}`}
-                                  onClick={() => handleTransportChange("webrtc")}
-                                >
-                                  WebRTC (WSS) <small>Port 8089</small>
-                                </button>
-                                <button
-                                  type="button"
                                   className={`transport-pill ${sipDraft.transport === "udp" ? "active" : ""}`}
                                   onClick={() => handleTransportChange("udp")}
                                 >
-                                  UDP <small>Port 5060</small>
+                                  UDP (Standard) <small>Port 5060</small>
                                 </button>
                                 <button
                                   type="button"
@@ -1822,18 +1816,22 @@ function App({ initialSipProfile }: { initialSipProfile?: SipProfile }) {
                                 >
                                   TCP <small>Port 5060</small>
                                 </button>
+                                <button
+                                  type="button"
+                                  className={`transport-pill ${sipDraft.transport === "webrtc" ? "active" : ""}`}
+                                  onClick={() => handleTransportChange("webrtc")}
+                                >
+                                  WebRTC (WSS) <small>Port 8089</small>
+                                </button>
                               </div>
                             </div>
 
-                            {/* Informational hint for UDP/TLS */}
-                            {sipDraft.transport !== "webrtc" && (
-                              <div className="settings-hint-box">
-                                <Info size={16} />
-                                <div>
-                                  <strong>Browser WebRTC Bridge Notice:</strong> Standard web browsers communicate via WebSocket/WebRTC. For UDP or TLS PBX connections, your PBX must have a WebSocket gateway or bridge enabled (e.g. Asterisk WSS, FreeSWITCH, or RTPEngine) to route signaling into UDP/TLS.
-                                </div>
+                            <div className="settings-hint-box" style={{ background: "#f5f9f6", borderColor: "#cde9d7", color: "#1b6338" }}>
+                              <ShieldCheck size={16} />
+                              <div>
+                                <strong>Native Desktop SIP Engine:</strong> Connects directly to any PBX over native UDP/TCP/TLS sockets with low-latency G.711 RTP audio, exactly like Zoiper 5.
                               </div>
-                            )}
+                            </div>
 
                             <div className="settings-field-row">
                               <label>

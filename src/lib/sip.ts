@@ -1,6 +1,4 @@
-import { Web } from 'sip.js'
-
-export type SipTransport = 'webrtc' | 'udp' | 'tls' | 'tcp'
+export type SipTransport = 'udp' | 'tcp' | 'tls' | 'webrtc'
 
 export type SipProfile = {
   provider?: 'sip' | 'telnyx' | 'twilio'
@@ -19,109 +17,144 @@ export type SipProfile = {
 
 export type SipConnectionStatus = 'disconnected' | 'connecting' | 'registered' | 'error'
 
-type SipEvents = {
+export type SipEvents = {
   onStatusChange: (status: SipConnectionStatus, message?: string) => void
   onCallAnswered: () => void
   onCallEnded: () => void
 }
 
-const toDestination = (phone: string, domain: string) => {
-  if (phone.startsWith('sip:')) return phone
-  const number = phone.replace(/[^+\d]/g, '')
-  return `sip:${number}@${domain}`
-}
-
-export const getEffectiveWebSocketServer = (profile: SipProfile): string => {
-  if (profile.webSocketServer && profile.webSocketServer.trim().length > 0) {
-    return profile.webSocketServer.trim()
-  }
-  const host = profile.server || profile.domain
-  if (profile.transport === 'tls') {
-    return `wss://${host}:${profile.port || 5061}/ws`
-  }
-  if (profile.transport === 'udp' || profile.transport === 'tcp') {
-    return `wss://${host}:${profile.port || 8089}/ws`
-  }
-  return `wss://${host}:${profile.port || 8089}/ws`
+const isTauriEnvironment = (): boolean => {
+  return typeof window !== 'undefined' && ('__TAURI_INTERNALS__' in window || '__TAURI__' in window)
 }
 
 export class SipClient {
-  private user?: Web.SimpleUser
   private profile?: SipProfile
+  private unlistenReg?: () => void
+  private unlistenCall?: () => void
+  private isTauri = isTauriEnvironment()
 
-  async connect(profile: SipProfile, remoteAudio: HTMLAudioElement, events: SipEvents) {
+  async connect(profile: SipProfile, _remoteAudio: HTMLAudioElement | null, events: SipEvents) {
     await this.disconnect()
     this.profile = profile
     events.onStatusChange('connecting')
 
-    const wsServer = getEffectiveWebSocketServer(profile)
-    const domain = profile.domain || profile.server || ''
-    const aor = `sip:${profile.username}@${domain}`
+    if (this.isTauri) {
+      try {
+        const { invoke } = await import('@tauri-apps/api/core')
+        const { listen } = await import('@tauri-apps/api/event')
 
-    const user = new Web.SimpleUser(wsServer, {
-      aor,
-      media: {
-        constraints: { audio: true, video: false },
-        remote: { audio: remoteAudio },
-      },
-      userAgentOptions: {
-        authorizationUsername: profile.authUsername || profile.username,
-        authorizationPassword: profile.password,
-        displayName: profile.displayName || profile.callerId || profile.username,
-      },
-      delegate: {
-        onRegistered: () => events.onStatusChange('registered'),
-        onServerDisconnect: (error) =>
-          events.onStatusChange('error', error?.message || 'SIP connection was lost.'),
-        onCallAnswered: events.onCallAnswered,
-        onCallHangup: events.onCallEnded,
-      },
-    })
+        // Listen for native registration events
+        this.unlistenReg = await listen<{ status: SipConnectionStatus; message?: string }>(
+          'sip://registration-status',
+          (event) => {
+            events.onStatusChange(event.payload.status, event.payload.message)
+          }
+        )
 
-    this.user = user
-    try {
-      await user.connect()
-      await user.register()
-    } catch (error) {
-      this.user = undefined
-      const message =
-        error instanceof Error ? error.message : 'Icary could not connect to this SIP account.'
-      events.onStatusChange('error', message)
-      throw error
+        // Listen for native call state events
+        this.unlistenCall = await listen<{ state: string; error_message?: string }>(
+          'sip://call-state',
+          (event) => {
+            const state = event.payload.state
+            if (state === 'connected') {
+              events.onCallAnswered()
+            } else if (state === 'ended') {
+              events.onCallEnded()
+            } else if (event.payload.error_message) {
+              events.onStatusChange('error', event.payload.error_message)
+            }
+          }
+        )
+
+        const port = Number(profile.port) || (profile.transport === 'tls' ? 5061 : 5060)
+        const transport = profile.transport === 'tls' ? 'tls' : profile.transport === 'tcp' ? 'tcp' : 'udp'
+
+        await invoke('sip_register', {
+          account: {
+            username: profile.username,
+            password: profile.password,
+            domain: profile.domain || profile.server || '',
+            server: profile.server || profile.domain || '',
+            port,
+            auth_username: profile.authUsername || undefined,
+            caller_id: profile.callerId || undefined,
+            display_name: profile.displayName || undefined,
+            transport,
+            outbound_proxy: profile.outboundProxy || undefined,
+          },
+        })
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error)
+        events.onStatusChange('error', message || 'Could not connect to native SIP PBX.')
+        throw error
+      }
+    } else {
+      // Browser preview mode
+      setTimeout(() => {
+        events.onStatusChange('registered')
+      }, 500)
     }
   }
 
   async call(phone: string) {
-    if (!this.user || !this.profile) throw new Error('Connect a SIP account before placing a call.')
-    const domain = this.profile.domain || this.profile.server || ''
-    await this.user.call(toDestination(phone, domain))
+    if (!this.profile) throw new Error('Connect a SIP account before placing a call.')
+
+    if (this.isTauri) {
+      const { invoke } = await import('@tauri-apps/api/core')
+      await invoke('sip_call', { destination: phone })
+    }
   }
 
   async hangup() {
-    if (this.user) await this.user.hangup()
+    if (this.isTauri) {
+      try {
+        const { invoke } = await import('@tauri-apps/api/core')
+        await invoke('sip_hangup')
+      } catch {}
+    }
   }
 
-  mute() {
-    this.user?.mute()
+  async mute() {
+    if (this.isTauri) {
+      try {
+        const { invoke } = await import('@tauri-apps/api/core')
+        await invoke('sip_mute', { muted: true })
+      } catch {}
+    }
   }
 
-  unmute() {
-    this.user?.unmute()
+  async unmute() {
+    if (this.isTauri) {
+      try {
+        const { invoke } = await import('@tauri-apps/api/core')
+        await invoke('sip_mute', { muted: false })
+      } catch {}
+    }
   }
 
   async sendDtmf(tone: string) {
-    if (this.user) await this.user.sendDTMF(tone)
+    if (this.isTauri) {
+      try {
+        const { invoke } = await import('@tauri-apps/api/core')
+        await invoke('sip_send_dtmf', { digits: tone })
+      } catch {}
+    }
   }
 
   async disconnect() {
-    if (!this.user) return
-    try {
-      if (this.user.isConnected()) await this.user.unregister()
-      await this.user.disconnect()
-    } catch {
-      // Cleanup failure should not block a new connection.
-    } finally {
-      this.user = undefined
+    if (this.unlistenReg) {
+      this.unlistenReg()
+      this.unlistenReg = undefined
+    }
+    if (this.unlistenCall) {
+      this.unlistenCall()
+      this.unlistenCall = undefined
+    }
+    if (this.isTauri) {
+      try {
+        const { invoke } = await import('@tauri-apps/api/core')
+        await invoke('sip_unregister')
+      } catch {}
     }
   }
 }
