@@ -27,6 +27,7 @@ import {
   ExternalLink,
   FileText,
   Home,
+  Info,
   KeyRound,
   LayoutList,
   ListPlus,
@@ -38,6 +39,7 @@ import {
   Package,
   Phone,
   Plus,
+  Radio,
   Search,
   Settings,
   Trash2,
@@ -52,6 +54,7 @@ import {
   SipClient,
   type SipConnectionStatus,
   type SipProfile,
+  type SipTransport,
 } from "./lib/sip";
 import { api } from "../convex/_generated/api";
 import type { Id } from "../convex/_generated/dataModel";
@@ -62,14 +65,49 @@ const Icon = ({ children }: { children: ReactNode }) => (
   <span className="nav-icon">{children}</span>
 );
 
+export type CallingLine = {
+  id: string;
+  number: string;
+  provider: "SIP" | "Telnyx" | "Twilio";
+  transport?: SipTransport;
+  server?: string;
+  port?: number;
+  domain?: string;
+  extension?: string;
+  authUsername?: string;
+  password?: string;
+  webSocketServer?: string;
+  outboundProxy?: string;
+  status?: SipConnectionStatus;
+};
+
 const emptySipProfile: SipProfile = {
-  webSocketServer: "",
+  provider: "sip",
+  transport: "webrtc",
+  server: "",
+  port: 8089,
   domain: "",
   username: "",
+  authUsername: "",
   password: "",
+  callerId: "",
+  displayName: "",
+  webSocketServer: "",
+  outboundProxy: "",
 };
-const callingLines = [
-  { id: "sip-primary", number: "+1 (415) 890-2144", provider: "SIP" },
+
+const defaultCallingLines: CallingLine[] = [
+  {
+    id: "sip-primary",
+    number: "+1 (415) 890-2144",
+    provider: "SIP",
+    transport: "webrtc",
+    server: "pbx.icary.io",
+    domain: "pbx.icary.io",
+    port: 8089,
+    extension: "1001",
+    status: "disconnected",
+  },
 ];
 
 type ImportedLead = {
@@ -182,7 +220,6 @@ function App({ initialSipProfile }: { initialSipProfile?: SipProfile }) {
   const [activeNav, setActiveNav] = useState("Dial");
   const [organizationOpen, setOrganizationOpen] = useState(false);
   const [linePickerOpen, setLinePickerOpen] = useState(false);
-  const [selectedLineId, setSelectedLineId] = useState(callingLines[0].id);
   const [paused, setPaused] = useState(false);
   const [assistantVisible, setAssistantVisible] = useState(true);
   const [bookingChecks, setBookingChecks] = useState([false, false, false]);
@@ -192,9 +229,39 @@ function App({ initialSipProfile }: { initialSipProfile?: SipProfile }) {
   const [autoDialAfterOutcome, setAutoDialAfterOutcome] =
     useState<Id<"leads"> | null>(null);
   const [globalSearch, setGlobalSearch] = useState("");
-  const [sipProfile, setSipProfile] = useState<SipProfile>(
-    initialSipProfile || emptySipProfile,
-  );
+  const [callingLines, setCallingLines] = useState<CallingLine[]>(() => {
+    try {
+      const saved = localStorage.getItem("opendialer_calling_lines");
+      if (saved) return JSON.parse(saved);
+    } catch {}
+    return defaultCallingLines;
+  });
+  const [selectedLineId, setSelectedLineId] = useState<string>(() => {
+    try {
+      const saved = localStorage.getItem("opendialer_selected_line_id");
+      if (saved) return saved;
+    } catch {}
+    return defaultCallingLines[0]?.id || "sip-primary";
+  });
+  const [selectedProviderTab, setSelectedProviderTab] = useState<
+    "sip" | "telnyx" | "twilio"
+  >("sip");
+  const [addNumberFormOpen, setAddNumberFormOpen] = useState(false);
+  const [sipDraft, setSipDraft] = useState<SipProfile>({
+    provider: "sip",
+    transport: "webrtc",
+    server: "",
+    port: 8089,
+    domain: "",
+    username: "",
+    authUsername: "",
+    password: "",
+    callerId: "",
+    displayName: "",
+    webSocketServer: "",
+    outboundProxy: "",
+  });
+  const [sipProfile, setSipProfile] = useState<SipProfile>(emptySipProfile);
   const [sipStatus, setSipStatus] =
     useState<SipConnectionStatus>("disconnected");
   const [settingsTab, setSettingsTab] = useState<
@@ -463,7 +530,9 @@ function App({ initialSipProfile }: { initialSipProfile?: SipProfile }) {
       .toUpperCase() || "OD";
   const organizationName = account?.organizationName || "My workspace";
   const selectedLine =
-    callingLines.find((line) => line.id === selectedLineId) || callingLines[0];
+    callingLines.find((line) => line.id === selectedLineId) ||
+    callingLines[0] ||
+    defaultCallingLines[0];
   const openNumbersSettings = () => {
     setActiveNav("Settings");
     setSettingsTab("Numbers");
@@ -640,6 +709,90 @@ function App({ initialSipProfile }: { initialSipProfile?: SipProfile }) {
       setSipBusy(false);
     }
   };
+  const handleTransportChange = (transport: SipTransport) => {
+    let defaultPort = 8089;
+    if (transport === "udp" || transport === "tcp") defaultPort = 5060;
+    if (transport === "tls") defaultPort = 5061;
+    setSipDraft((prev) => ({
+      ...prev,
+      transport,
+      port: defaultPort,
+    }));
+  };
+
+  const handleSaveAndConnectLine = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    setSipBusy(true);
+    setSipError("");
+
+    const lineId = `sip-${Date.now()}`;
+    const callerNumber = sipDraft.callerId?.trim() || (sipDraft.username ? `Ext ${sipDraft.username}` : "Line 1");
+    const newLine: CallingLine = {
+      id: lineId,
+      number: callerNumber,
+      provider: "SIP",
+      transport: sipDraft.transport,
+      server: sipDraft.server?.trim() || "",
+      port: Number(sipDraft.port) || (sipDraft.transport === "tls" ? 5061 : sipDraft.transport === "udp" ? 5060 : 8089),
+      domain: sipDraft.domain?.trim() || sipDraft.server?.trim() || "",
+      extension: sipDraft.username?.trim() || "",
+      authUsername: sipDraft.authUsername?.trim(),
+      password: sipDraft.password,
+      webSocketServer: sipDraft.webSocketServer?.trim(),
+      outboundProxy: sipDraft.outboundProxy?.trim(),
+      status: "connecting",
+    };
+
+    const updatedLines = [...callingLines, newLine];
+    setCallingLines(updatedLines);
+    setSelectedLineId(lineId);
+    try {
+      localStorage.setItem("opendialer_calling_lines", JSON.stringify(updatedLines));
+      localStorage.setItem("opendialer_selected_line_id", lineId);
+    } catch {}
+
+    setSipProfile(sipDraft);
+    await connectSipProfile(sipDraft);
+    setAddNumberFormOpen(false);
+  };
+
+  const handleRemoveLine = (lineId: string) => {
+    const remainingLines = callingLines.filter((l) => l.id !== lineId);
+    const newActiveId = remainingLines[0]?.id || "";
+    setCallingLines(remainingLines);
+    if (selectedLineId === lineId) {
+      setSelectedLineId(newActiveId);
+    }
+    try {
+      localStorage.setItem("opendialer_calling_lines", JSON.stringify(remainingLines));
+      localStorage.setItem("opendialer_selected_line_id", newActiveId);
+    } catch {}
+  };
+
+  const handleSelectActiveLine = async (line: CallingLine) => {
+    setSelectedLineId(line.id);
+    try {
+      localStorage.setItem("opendialer_selected_line_id", line.id);
+    } catch {}
+    if (line.server && line.extension) {
+      const profile: SipProfile = {
+        provider: "sip",
+        transport: line.transport || "webrtc",
+        server: line.server,
+        port: line.port || 8089,
+        domain: line.domain || line.server,
+        username: line.extension,
+        authUsername: line.authUsername,
+        password: line.password || "",
+        callerId: line.number,
+        webSocketServer: line.webSocketServer,
+        outboundProxy: line.outboundProxy,
+      };
+      setSipProfile(profile);
+      await connectSipProfile(profile);
+    }
+  };
+
   const connectSip = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     await connectSipProfile(sipProfile);
@@ -1477,106 +1630,353 @@ function App({ initialSipProfile }: { initialSipProfile?: SipProfile }) {
                 )}
                 {settingsTab === "Numbers" && (
                   <>
-                    <h2>Numbers</h2>
-                    <p className="settings-description">
-                      Choose the caller ID for your outbound calls and connect
-                      new lines here.
-                    </p>
-                    <div className="settings-line-row">
-                      <span className="settings-line-icon">
-                        <Phone size={17} />
-                      </span>
+                    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 6 }}>
                       <div>
-                        <strong>{selectedLine.number}</strong>
-                        <span>
-                          {selectedLine.provider} ·{" "}
-                          {sipStatus === "registered"
-                            ? "Connected"
-                            : sipStatus === "connecting"
-                              ? "Connecting"
-                              : "Not connected"}
-                        </span>
+                        <h2>Calling Numbers & Lines</h2>
+                        <p className="settings-description" style={{ marginBottom: 0 }}>
+                          Manage your active calling lines, configure SIP/PBX transports, or connect telephone providers.
+                        </p>
                       </div>
+                      <button
+                        type="button"
+                        className="primary-button"
+                        onClick={() => setAddNumberFormOpen((open) => !open)}
+                      >
+                        <Plus size={15} /> {addNumberFormOpen ? "Close form" : "Add a number"}
+                      </button>
                     </div>
-                    <form className="sip-settings-form" onSubmit={connectSip}>
+
+                    {/* Saved Lines Section */}
+                    <div className="saved-lines-container" style={{ marginTop: 20 }}>
                       <div className="settings-form-heading">
-                        <h3>Add a SIP line</h3>
-                        <p>
-                          Use a browser-compatible SIP account with secure
-                          WebSocket and WebRTC enabled.
-                        </p>
+                        <h3>Configured Lines ({callingLines.length})</h3>
+                        <p>Click any line to set it as your active calling identity.</p>
                       </div>
-                      <label>
-                        Secure WebSocket server
-                        <input
-                          required
-                          inputMode="url"
-                          value={sipProfile.webSocketServer}
-                          onChange={(event) =>
-                            updateSipProfile(
-                              "webSocketServer",
-                              event.target.value,
-                            )
-                          }
-                          placeholder="wss://pbx.example.com:8089/ws"
-                        />
-                      </label>
-                      <label>
-                        SIP domain
-                        <input
-                          required
-                          value={sipProfile.domain}
-                          onChange={(event) =>
-                            updateSipProfile("domain", event.target.value)
-                          }
-                          placeholder="pbx.example.com"
-                        />
-                      </label>
-                      <div className="settings-field-row">
-                        <label>
-                          Extension or username
-                          <input
-                            required
-                            autoComplete="username"
-                            value={sipProfile.username}
-                            onChange={(event) =>
-                              updateSipProfile("username", event.target.value)
-                            }
-                            placeholder="1001"
-                          />
-                        </label>
-                        <label>
-                          Password
-                          <input
-                            required
-                            type="password"
-                            autoComplete="current-password"
-                            value={sipProfile.password}
-                            onChange={(event) =>
-                              updateSipProfile("password", event.target.value)
-                            }
-                            placeholder="••••••••"
-                          />
-                        </label>
+
+                      {callingLines.map((line) => {
+                        const isSelected = line.id === selectedLineId;
+                        return (
+                          <div
+                            key={line.id}
+                            className={`saved-line-card ${isSelected ? "active-line" : ""}`}
+                          >
+                            <div className="saved-line-info">
+                              <span className="settings-line-icon">
+                                <Phone size={16} />
+                              </span>
+                              <div className="saved-line-details">
+                                <strong>
+                                  {line.number}
+                                  {isSelected && (
+                                    <span className="campaign-product-pill" style={{ background: "#111", color: "#fff", fontSize: 9 }}>
+                                      Active Line
+                                    </span>
+                                  )}
+                                </strong>
+                                <span>
+                                  {line.domain ? `${line.extension || "ext"}@${line.domain}` : line.provider}
+                                </span>
+                                <div className="saved-line-badges">
+                                  <span className="provider-badge">{line.provider}</span>
+                                  {line.transport && (
+                                    <span className="transport-badge">{line.transport.toUpperCase()}</span>
+                                  )}
+                                  {isSelected && (
+                                    <span className={`line-status-badge ${sipStatus}`}>
+                                      {sipStatus === "registered"
+                                        ? "Connected"
+                                        : sipStatus === "connecting"
+                                          ? "Connecting"
+                                          : "Disconnected"}
+                                    </span>
+                                  )}
+                                </div>
+                              </div>
+                            </div>
+
+                            <div className="saved-line-actions">
+                              {!isSelected && (
+                                <button
+                                  type="button"
+                                  className="secondary-button"
+                                  onClick={() => void handleSelectActiveLine(line)}
+                                >
+                                  Set Active
+                                </button>
+                              )}
+                              {isSelected && (
+                                <button
+                                  type="button"
+                                  className="secondary-button"
+                                  disabled={sipBusy}
+                                  onClick={() => void handleSelectActiveLine(line)}
+                                >
+                                  {sipStatus === "registered"
+                                    ? "Reconnect"
+                                    : sipBusy
+                                      ? "Connecting…"
+                                      : "Connect"}
+                                </button>
+                              )}
+                              {callingLines.length > 1 && (
+                                <button
+                                  type="button"
+                                  className="icon-button destructive-button"
+                                  title="Delete line"
+                                  onClick={() => handleRemoveLine(line.id)}
+                                >
+                                  <Trash2 size={14} />
+                                </button>
+                              )}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+
+                    {/* Add Number / Provider Section */}
+                    {addNumberFormOpen && (
+                      <div className="provider-selector-section">
+                        <div className="settings-form-heading">
+                          <h3>Add a Calling Line</h3>
+                          <p>Select your telephony provider or enter custom SIP credentials.</p>
+                        </div>
+
+                        {/* Provider Selection Cards */}
+                        <div className="provider-cards-grid">
+                          <button
+                            type="button"
+                            className={`provider-card ${selectedProviderTab === "sip" ? "selected" : ""}`}
+                            onClick={() => setSelectedProviderTab("sip")}
+                          >
+                            <div className="provider-card-head">
+                              <span className="provider-card-title">Custom SIP / PBX</span>
+                              <Radio size={14} color={selectedProviderTab === "sip" ? "#111" : "#bbb"} />
+                            </div>
+                            <p className="provider-card-desc">
+                              Connect any Asterisk, FreePBX, FreeSWITCH, 3CX, or Kamailio server via WebRTC, UDP, or TLS.
+                            </p>
+                          </button>
+
+                          <button
+                            type="button"
+                            className={`provider-card coming-soon ${selectedProviderTab === "telnyx" ? "selected" : ""}`}
+                            onClick={() => setSelectedProviderTab("telnyx")}
+                          >
+                            <div className="provider-card-head">
+                              <span className="provider-card-title">Telnyx</span>
+                              <span className="campaign-product-pill" style={{ fontSize: 9 }}>soon</span>
+                            </div>
+                            <p className="provider-card-desc">
+                              Direct Telnyx SIP trunking and WebRTC calling with instant number provisioning.
+                            </p>
+                          </button>
+
+                          <button
+                            type="button"
+                            className={`provider-card coming-soon ${selectedProviderTab === "twilio" ? "selected" : ""}`}
+                            onClick={() => setSelectedProviderTab("twilio")}
+                          >
+                            <div className="provider-card-head">
+                              <span className="provider-card-title">Twilio</span>
+                              <span className="campaign-product-pill" style={{ fontSize: 9 }}>soon</span>
+                            </div>
+                            <p className="provider-card-desc">
+                              Twilio Voice WebRTC SDK and Elastic SIP Trunking integration for global coverage.
+                            </p>
+                          </button>
+                        </div>
+
+                        {/* Custom SIP Tab Content */}
+                        {selectedProviderTab === "sip" && (
+                          <form className="sip-settings-form" onSubmit={handleSaveAndConnectLine}>
+                            {/* Transport Selector */}
+                            <div className="transport-selector-container">
+                              <label>Signaling Transport Protocol</label>
+                              <div className="transport-pill-group">
+                                <button
+                                  type="button"
+                                  className={`transport-pill ${sipDraft.transport === "webrtc" ? "active" : ""}`}
+                                  onClick={() => handleTransportChange("webrtc")}
+                                >
+                                  WebRTC (WSS) <small>Port 8089</small>
+                                </button>
+                                <button
+                                  type="button"
+                                  className={`transport-pill ${sipDraft.transport === "udp" ? "active" : ""}`}
+                                  onClick={() => handleTransportChange("udp")}
+                                >
+                                  UDP <small>Port 5060</small>
+                                </button>
+                                <button
+                                  type="button"
+                                  className={`transport-pill ${sipDraft.transport === "tls" ? "active" : ""}`}
+                                  onClick={() => handleTransportChange("tls")}
+                                >
+                                  TLS / SIPS <small>Port 5061</small>
+                                </button>
+                                <button
+                                  type="button"
+                                  className={`transport-pill ${sipDraft.transport === "tcp" ? "active" : ""}`}
+                                  onClick={() => handleTransportChange("tcp")}
+                                >
+                                  TCP <small>Port 5060</small>
+                                </button>
+                              </div>
+                            </div>
+
+                            {/* Informational hint for UDP/TLS */}
+                            {sipDraft.transport !== "webrtc" && (
+                              <div className="settings-hint-box">
+                                <Info size={16} />
+                                <div>
+                                  <strong>Browser WebRTC Bridge Notice:</strong> Standard web browsers communicate via WebSocket/WebRTC. For UDP or TLS PBX connections, your PBX must have a WebSocket gateway or bridge enabled (e.g. Asterisk WSS, FreeSWITCH, or RTPEngine) to route signaling into UDP/TLS.
+                                </div>
+                              </div>
+                            )}
+
+                            <div className="settings-field-row">
+                              <label>
+                                Display Caller ID / Phone Number *
+                                <input
+                                  required
+                                  value={sipDraft.callerId}
+                                  onChange={(e) => setSipDraft({ ...sipDraft, callerId: e.target.value })}
+                                  placeholder="+1 (512) 555-0199"
+                                />
+                              </label>
+                              <label>
+                                SIP Domain / Realm *
+                                <input
+                                  required
+                                  value={sipDraft.domain}
+                                  onChange={(e) => setSipDraft({ ...sipDraft, domain: e.target.value })}
+                                  placeholder="pbx.mycompany.com"
+                                />
+                              </label>
+                            </div>
+
+                            <div className="settings-field-row-3">
+                              <label>
+                                SIP Server / Host IP *
+                                <input
+                                  required
+                                  value={sipDraft.server}
+                                  onChange={(e) => setSipDraft({ ...sipDraft, server: e.target.value })}
+                                  placeholder="198.51.100.1 or pbx.mycompany.com"
+                                />
+                              </label>
+                              <label>
+                                Port
+                                <input
+                                  type="number"
+                                  value={sipDraft.port}
+                                  onChange={(e) => setSipDraft({ ...sipDraft, port: Number(e.target.value) })}
+                                  placeholder={sipDraft.transport === "tls" ? "5061" : sipDraft.transport === "udp" ? "5060" : "8089"}
+                                />
+                              </label>
+                            </div>
+
+                            <div className="settings-field-row">
+                              <label>
+                                Extension / Username *
+                                <input
+                                  required
+                                  autoComplete="username"
+                                  value={sipDraft.username}
+                                  onChange={(e) => setSipDraft({ ...sipDraft, username: e.target.value })}
+                                  placeholder="1001"
+                                />
+                              </label>
+                              <label>
+                                Auth Username (optional)
+                                <input
+                                  value={sipDraft.authUsername}
+                                  onChange={(e) => setSipDraft({ ...sipDraft, authUsername: e.target.value })}
+                                  placeholder="Leave blank if same as extension"
+                                />
+                              </label>
+                            </div>
+
+                            <div className="settings-field-row">
+                              <label>
+                                Password / Secret *
+                                <input
+                                  required
+                                  type="password"
+                                  autoComplete="current-password"
+                                  value={sipDraft.password}
+                                  onChange={(e) => setSipDraft({ ...sipDraft, password: e.target.value })}
+                                  placeholder="••••••••"
+                                />
+                              </label>
+                              <label>
+                                WebSocket Gateway URL (optional)
+                                <input
+                                  inputMode="url"
+                                  value={sipDraft.webSocketServer}
+                                  onChange={(e) => setSipDraft({ ...sipDraft, webSocketServer: e.target.value })}
+                                  placeholder="wss://pbx.mycompany.com:8089/ws"
+                                />
+                              </label>
+                            </div>
+
+                            {sipError && (
+                              <p className="settings-error" role="alert">
+                                {sipError}
+                              </p>
+                            )}
+
+                            <div className="settings-form-actions">
+                              <button
+                                type="button"
+                                className="secondary-button"
+                                onClick={() => setAddNumberFormOpen(false)}
+                              >
+                                Cancel
+                              </button>
+                              <button
+                                type="submit"
+                                className="primary-button"
+                                disabled={sipBusy}
+                              >
+                                {sipBusy ? "Connecting line…" : "Save & Connect Line"}
+                              </button>
+                            </div>
+                          </form>
+                        )}
+
+                        {/* Telnyx Coming Soon Preview */}
+                        {selectedProviderTab === "telnyx" && (
+                          <div className="provider-coming-preview">
+                            <h4>Telnyx Direct Integration</h4>
+                            <p>
+                              Native Telnyx support is coming soon! You will be able to input your Telnyx API Key, manage virtual phone numbers directly, and connect via Telnyx WebRTC.
+                            </p>
+                            <div style={{ marginTop: 14 }}>
+                              <span className="campaign-product-pill" style={{ background: "#111", color: "#fff" }}>
+                                In Development
+                              </span>
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Twilio Coming Soon Preview */}
+                        {selectedProviderTab === "twilio" && (
+                          <div className="provider-coming-preview">
+                            <h4>Twilio Voice Integration</h4>
+                            <p>
+                              Direct Twilio Voice integration is coming soon! You will be able to connect your Twilio Account SID, Auth Token, and TwiML App for seamless global outbound dialing.
+                            </p>
+                            <div style={{ marginTop: 14 }}>
+                              <span className="campaign-product-pill" style={{ background: "#111", color: "#fff" }}>
+                                In Development
+                              </span>
+                            </div>
+                          </div>
+                        )}
                       </div>
-                      {sipError && (
-                        <p className="settings-error" role="alert">
-                          {sipError}
-                        </p>
-                      )}
-                      <div className="settings-form-actions">
-                        <button
-                          className="primary-button"
-                          disabled={sipBusy || isSipConnected}
-                        >
-                          {isSipConnected
-                            ? "SIP connected"
-                            : sipBusy
-                              ? "Connecting…"
-                              : "Connect SIP"}
-                        </button>
-                      </div>
-                    </form>
+                    )}
                   </>
                 )}
                 {settingsTab === "Integrations" && (
