@@ -10,10 +10,13 @@
 
 import type * as auth from "../auth.js";
 import type * as campaigns from "../campaigns.js";
+import type * as demo from "../demo.js";
 import type * as dialer from "../dialer.js";
 import type * as http from "../http.js";
 import type * as leadLists from "../leadLists.js";
+import type * as organizationData from "../organizationData.js";
 import type * as organizations from "../organizations.js";
+import type * as products from "../products.js";
 
 import type {
   ApiFromModules,
@@ -24,10 +27,13 @@ import type {
 declare const fullApi: ApiFromModules<{
   auth: typeof auth;
   campaigns: typeof campaigns;
+  demo: typeof demo;
   dialer: typeof dialer;
   http: typeof http;
   leadLists: typeof leadLists;
+  organizationData: typeof organizationData;
   organizations: typeof organizations;
+  products: typeof products;
 }>;
 
 /**

@@ -1,4 +1,6 @@
 import {
+  Activity as ActivityIcon,
+  Fragment,
   useEffect,
   useRef,
   useState,
@@ -28,6 +30,7 @@ import {
   MailPlus,
   MicOff,
   MoreHorizontal,
+  Package,
   Phone,
   Plus,
   Search,
@@ -35,6 +38,7 @@ import {
   Trash2,
   UserRound,
   Users,
+  UserPlus,
   X,
 } from "lucide-react";
 import "./styles.css";
@@ -113,16 +117,33 @@ function App({ initialSipProfile }: { initialSipProfile?: SipProfile }) {
   const dialerWorkspace = useQuery(api.dialer.workspace);
   const myCampaigns = useQuery(api.dialer.myCampaigns) || [];
   const homeData = useQuery(api.dialer.home);
+  const products = useQuery(api.products.list) || [];
+  const organizationOverview = useQuery(api.organizationData.overview);
+  const organizationMembers = useQuery(api.organizationData.members) || [];
+  const organizationActivity = useQuery(api.organizationData.activity) || [];
+  const acquaintances = useQuery(api.organizationData.acquaintances) || [];
   const updateProfile = useMutation(api.organizations.updateProfile);
   const importLeadCsv = useMutation(api.leadLists.importCsv);
   const createOffer = useMutation(api.campaigns.createOffer);
   const createPlaybook = useMutation(api.campaigns.createPlaybook);
   const createCampaign = useMutation(api.campaigns.createCampaign);
   const setActiveCampaign = useMutation(api.dialer.setActiveCampaign);
+  const seedDemoData = useMutation(api.demo.seedCallCompanion);
+  const createProduct = useMutation(api.products.create);
+  const updateProduct = useMutation(api.products.update);
+  const removeProduct = useMutation(api.products.remove);
+  const inviteMember = useMutation(api.organizationData.inviteMember);
+  const removeMember = useMutation(api.organizationData.removeMember);
+  const addAcquaintance = useMutation(api.organizationData.addAcquaintance);
+  const updateAcquaintance = useMutation(
+    api.organizationData.updateAcquaintance,
+  );
+  const removeAcquaintance = useMutation(
+    api.organizationData.removeAcquaintance,
+  );
   const recordCallOutcome = useMutation(api.dialer.recordOutcome);
   const saveCampaignOffer = useMutation(api.campaigns.saveCampaignOffer);
   const saveCampaignPlaybook = useMutation(api.campaigns.saveCampaignPlaybook);
-  const setCampaignLeadLists = useMutation(api.campaigns.setCampaignLeadLists);
   const renameCampaign = useMutation(api.campaigns.renameCampaign);
   const deleteCampaign = useMutation(api.campaigns.deleteCampaign);
   const deleteCampaignOffer = useMutation(api.campaigns.deleteCampaignOffer);
@@ -221,8 +242,35 @@ function App({ initialSipProfile }: { initialSipProfile?: SipProfile }) {
     playbookBody: "",
   });
   const [resourceError, setResourceError] = useState("");
+  const [demoSeeding, setDemoSeeding] = useState(false);
+  const [productDraft, setProductDraft] = useState({
+    name: "",
+    description: "",
+    whoWeAre: "",
+    whoWeHelp: "",
+    elevatorPitch: "",
+    commonObjections: "",
+    faq: "",
+    trainingNotes: "",
+    bookingProvider: "calcom",
+    bookingUrl: "https://cal.com",
+  });
+  const [editingProductId, setEditingProductId] =
+    useState<Id<"products"> | null>(null);
+  const [productEditorOpen, setProductEditorOpen] = useState(false);
+  const [memberDraft, setMemberDraft] = useState({
+    name: "",
+    email: "",
+    title: "",
+  });
+  const [acquaintanceDraft, setAcquaintanceDraft] = useState({
+    name: "",
+    email: "",
+  });
   const [selectedCampaignId, setSelectedCampaignId] =
     useState<Id<"campaigns"> | null>(null);
+  const [selectedCampaignLeadListId, setSelectedCampaignLeadListId] =
+    useState<Id<"leadLists"> | null>(null);
   const [pendingQueueLeadId, setPendingQueueLeadId] =
     useState<Id<"leads"> | null>(null);
   const [campaignSection, setCampaignSection] = useState<
@@ -255,6 +303,26 @@ function App({ initialSipProfile }: { initialSipProfile?: SipProfile }) {
   const remoteAudio = useRef<HTMLAudioElement>(null);
   const initialSipAttempted = useRef(false);
   const remaining = notes.length;
+  const openResearchLink = async (url: string) => {
+    try {
+      const destination = new URL(url).toString();
+      if ("__TAURI_INTERNALS__" in window) {
+        const { WebviewWindow } = await import("@tauri-apps/api/webviewWindow");
+        new WebviewWindow(`research-${Date.now()}`, {
+          url: destination,
+          title: "OpenDialer research",
+          width: 1180,
+          height: 820,
+          minWidth: 860,
+          minHeight: 620,
+        });
+      } else {
+        window.open(destination, "_blank", "noopener,noreferrer");
+      }
+    } catch {
+      setCallError("That research link is not a valid URL.");
+    }
+  };
   const leads = (dialerWorkspace?.leads || []).map((item) => {
     const name =
       [item.firstName, item.lastName].filter(Boolean).join(" ") ||
@@ -304,6 +372,72 @@ function App({ initialSipProfile }: { initialSipProfile?: SipProfile }) {
   const openNumbersSettings = () => {
     setActiveNav("Settings");
     setSettingsTab("Numbers");
+  };
+  const addDemoData = async () => {
+    setDemoSeeding(true);
+    setResourceError("");
+    try {
+      const result = await seedDemoData({});
+      openCampaign(result.campaignId);
+    } catch (error) {
+      setResourceError(
+        error instanceof Error
+          ? error.message
+          : "Icary could not add demo data.",
+      );
+    } finally {
+      setDemoSeeding(false);
+    }
+  };
+  const openProductEditor = (product?: (typeof products)[number]) => {
+    if (product) {
+      setEditingProductId(product._id);
+      setProductDraft({
+        name: product.name,
+        description: product.description,
+        whoWeAre: product.whoWeAre || "",
+        whoWeHelp: product.whoWeHelp || "",
+        elevatorPitch: product.elevatorPitch || "",
+        commonObjections: product.commonObjections || "",
+        faq: product.faq || "",
+        trainingNotes: product.trainingNotes || "",
+        bookingProvider: product.bookingProvider || "calcom",
+        bookingUrl: product.bookingUrl || "",
+      });
+    } else {
+      setEditingProductId(null);
+      setProductDraft({
+        name: "",
+        description: "",
+        whoWeAre: "",
+        whoWeHelp: "",
+        elevatorPitch: "",
+        commonObjections: "",
+        faq: "",
+        trainingNotes: "",
+        bookingProvider: "calcom",
+        bookingUrl: "https://cal.com",
+      });
+    }
+    setProductEditorOpen(true);
+  };
+  const saveProduct = async (event: FormEvent) => {
+    event.preventDefault();
+    setResourceError("");
+    try {
+      const data = {
+        ...productDraft,
+        bookingProvider: productDraft.bookingProvider as "calcom" | "calendly",
+      };
+      if (editingProductId)
+        await updateProduct({ productId: editingProductId, ...data });
+      else await createProduct(data);
+      setProductEditorOpen(false);
+    } catch (error) {
+      setResourceError(
+        error instanceof Error ? error.message : "Could not save product.",
+      );
+    }
   };
 
   useEffect(() => {
@@ -708,13 +842,17 @@ function App({ initialSipProfile }: { initialSipProfile?: SipProfile }) {
     section: "Overview" | "Offer" | "Lead lists" | "Playbook" = "Overview",
   ) => {
     setSelectedCampaignId(campaignId);
+    setSelectedCampaignLeadListId(null);
     setCampaignSection(section);
     setActiveNav("Campaigns");
   };
-  const dialCampaignLead = async (leadId: Id<"leads">) => {
+  const dialCampaignLead = async (
+    leadId: Id<"leads">,
+    leadListId: Id<"leadLists">,
+  ) => {
     if (!selectedCampaignId) return;
     try {
-      await startCampaign(selectedCampaignId);
+      await startCampaign(selectedCampaignId, leadListId);
       setPendingQueueLeadId(leadId);
       setActiveNav("Dial");
     } catch (error) {
@@ -725,9 +863,16 @@ function App({ initialSipProfile }: { initialSipProfile?: SipProfile }) {
       );
     }
   };
-  const startCampaign = async (campaignId: Id<"campaigns">) => {
+  const startCampaign = async (
+    campaignId: Id<"campaigns">,
+    leadListId: Id<"leadLists"> | null = selectedCampaignLeadListId,
+  ) => {
+    if (!leadListId) {
+      setResourceError("Choose a lead list before starting Dial.");
+      return;
+    }
     try {
-      await setActiveCampaign({ campaignId });
+      await setActiveCampaign({ campaignId, leadListId });
       setSelectedLead(0);
       setActiveNav("Dial");
     } catch (error) {
@@ -779,25 +924,6 @@ function App({ initialSipProfile }: { initialSipProfile?: SipProfile }) {
         error instanceof Error
           ? error.message
           : "Icary could not save this playbook.",
-      );
-    }
-  };
-  const toggleCampaignList = async (listId: Id<"leadLists">) => {
-    if (!campaignDetail || !selectedCampaignId) return;
-    const current = campaignDetail.campaign.leadListIds || [];
-    const next = current.includes(listId)
-      ? current.filter((id) => id !== listId)
-      : [...current, listId];
-    try {
-      await setCampaignLeadLists({
-        campaignId: selectedCampaignId,
-        leadListIds: next,
-      });
-    } catch (error) {
-      setResourceError(
-        error instanceof Error
-          ? error.message
-          : "Icary could not update this campaign.",
       );
     }
   };
@@ -995,8 +1121,8 @@ function App({ initialSipProfile }: { initialSipProfile?: SipProfile }) {
               </div>
             )}
           </div>
-          <div className="nav-section">
-            <div className="nav-label">Workspace</div>
+          <div className="nav-section personal-section">
+            <div className="nav-label">Personal</div>
             <button
               className={`nav-item ${activeNav === "Home" ? "active" : ""}`}
               onClick={() => setActiveNav("Home")}
@@ -1004,16 +1130,7 @@ function App({ initialSipProfile }: { initialSipProfile?: SipProfile }) {
               <Icon>
                 <Home size={18} />
               </Icon>
-              <span>Home</span>
-            </button>
-            <button
-              className={`nav-item ${activeNav === "Dial" ? "active" : ""}`}
-              onClick={() => setActiveNav("Dial")}
-            >
-              <Icon>
-                <Phone size={18} />
-              </Icon>
-              <span>Dial</span>
+              <span>Dashboard</span>
             </button>
             <button
               className={`nav-item ${activeNav === "My campaigns" ? "active" : ""}`}
@@ -1030,13 +1147,14 @@ function App({ initialSipProfile }: { initialSipProfile?: SipProfile }) {
               title="Coming soon"
             >
               <Icon>
-                <CalendarDays size={18} />
+                <Users size={18} />
               </Icon>
-              <span>Goals</span>
+              <span>Acquaintances</span>
               <small>soon</small>
             </button>
           </div>
 
+          <div className="sidebar-divider" />
           <div className="nav-section organization-section">
             <div className="organization-switcher">
               <button
@@ -1073,14 +1191,35 @@ function App({ initialSipProfile }: { initialSipProfile?: SipProfile }) {
               <Icon>
                 <BarChart3 size={18} />
               </Icon>
-              <span>Dashboard</span>
+              <span>Overview</span>
               <small>soon</small>
+            </button>
+            <button
+              className={`nav-item ${activeNav === "Members" ? "active" : ""}`}
+              onClick={() => setActiveNav("Members")}
+            >
+              <Icon>
+                <UserRound size={18} />
+              </Icon>
+              <span>Members</span>
+            </button>
+            <button
+              className={`nav-item ${activeNav === "Products" ? "active" : ""}`}
+              onClick={() => {
+                setSelectedCampaignId(null);
+                setActiveNav("Products");
+              }}
+            >
+              <Icon>
+                <LayoutList size={18} />
+              </Icon>
+              <span>Products</span>
             </button>
             <button
               className={`nav-item nav-parent ${activeNav === "Campaigns" ? "active" : ""}`}
               onClick={() => {
                 setActiveNav("Campaigns");
-                setCampaignsExpanded((expanded) => !expanded);
+                setCampaignsExpanded(true);
               }}
               aria-expanded={campaignsExpanded}
             >
@@ -1096,22 +1235,41 @@ function App({ initialSipProfile }: { initialSipProfile?: SipProfile }) {
             {campaignsExpanded && (
               <div className="nav-children campaign-nav-children">
                 {campaignWorkspace?.campaigns.map((campaign) => (
-                  <button
-                    key={campaign._id}
-                    className={`nav-item nav-child ${selectedCampaignId === campaign._id && activeNav === "Campaigns" ? "selected" : ""}`}
-                    onClick={() => openCampaign(campaign._id)}
-                    aria-current={
-                      selectedCampaignId === campaign._id &&
-                      activeNav === "Campaigns"
-                        ? "page"
-                        : undefined
-                    }
-                  >
-                    <Icon>
-                      <BookOpen size={15} />
-                    </Icon>
-                    <span>{campaign.name}</span>
-                  </button>
+                  <Fragment key={campaign._id}>
+                    <button
+                      key={campaign._id}
+                      className={`nav-item nav-child ${selectedCampaignId === campaign._id && activeNav === "Campaigns" ? "selected" : ""}`}
+                      onClick={() => openCampaign(campaign._id)}
+                      aria-current={
+                        selectedCampaignId === campaign._id &&
+                        activeNav === "Campaigns"
+                          ? "page"
+                          : undefined
+                      }
+                    >
+                      <Icon>
+                        <BookOpen size={15} />
+                      </Icon>
+                      <span>{campaign.name}</span>
+                    </button>
+                    {selectedCampaignId === campaign._id &&
+                      campaignDetail?.leadLists.map((list) => (
+                        <button
+                          key={list._id}
+                          className={`nav-item nav-child nav-list-child ${selectedCampaignLeadListId === list._id ? "selected" : ""}`}
+                          onClick={() => {
+                            setSelectedCampaignLeadListId(list._id);
+                            setCampaignSection("Overview");
+                            setActiveNav("Campaigns");
+                          }}
+                        >
+                          <Icon>
+                            <LayoutList size={14} />
+                          </Icon>
+                          <span>{list.name}</span>
+                        </button>
+                      ))}
+                  </Fragment>
                 ))}
                 <button
                   className="nav-item nav-child add-campaign-nav"
@@ -1133,9 +1291,9 @@ function App({ initialSipProfile }: { initialSipProfile?: SipProfile }) {
               title="Coming soon"
             >
               <Icon>
-                <Users size={18} />
+                <Clock3 size={18} />
               </Icon>
-              <span>Members</span>
+              <span>Activity</span>
               <small>soon</small>
             </button>
           </div>
@@ -1148,7 +1306,7 @@ function App({ initialSipProfile }: { initialSipProfile?: SipProfile }) {
             <Icon>
               <Settings size={18} />
             </Icon>
-            <span>Settings</span>
+            <span>Global settings</span>
           </button>
           <button className="profile-row">
             <span className="avatar avatar-small">
@@ -1548,12 +1706,9 @@ function App({ initialSipProfile }: { initialSipProfile?: SipProfile }) {
                       </button>
                       <button
                         className="primary-button"
-                        disabled={!campaign.leadCount}
-                        onClick={() => void startCampaign(campaign._id)}
+                        onClick={() => openCampaign(campaign._id)}
                       >
-                        {dialerWorkspace?.activeCampaign?._id === campaign._id
-                          ? "Resume"
-                          : "Work campaign"}
+                        Choose list
                       </button>
                     </div>
                   </article>
@@ -1581,6 +1736,320 @@ function App({ initialSipProfile }: { initialSipProfile?: SipProfile }) {
               </p>
             )}
           </section>
+        ) : activeNav === "Products" ? (
+          <section className="resource-page product-catalog-page">
+            <header className="home-header">
+              <div>
+                <h1>Products</h1>
+                <p>
+                  The organization catalog. Link products to a campaign when you
+                  set it up.
+                </p>
+              </div>
+              <button
+                className="primary-button"
+                onClick={() => openProductEditor()}
+              >
+                <Plus size={16} /> Add product
+              </button>
+            </header>
+            {products.length ? (
+              <div className="campaign-index product-index">
+                {products.map((product) => (
+                  <article className="campaign-card" key={product._id}>
+                    <div className="campaign-card-header">
+                      <div>
+                        <h2>{product.name}</h2>
+                        <p>{product.description || "No description yet."}</p>
+                      </div>
+                      <Package size={19} />
+                    </div>
+                    <div className="campaign-tags">
+                      {product.whoWeHelp && <span>{product.whoWeHelp}</span>}
+                      {product.bookingProvider && (
+                        <span>
+                          {product.bookingProvider === "calcom"
+                            ? "Cal.com"
+                            : "Calendly"}
+                        </span>
+                      )}
+                    </div>
+                    <div className="campaign-card-footer">
+                      <button
+                        className="secondary-button"
+                        onClick={() => openProductEditor(product)}
+                      >
+                        Edit product
+                      </button>
+                      <button
+                        className="icon-button destructive-button"
+                        aria-label={`Delete ${product.name}`}
+                        onClick={() => {
+                          if (
+                            window.confirm(
+                              `Delete ${product.name}? It will be unlinked from all campaigns.`,
+                            )
+                          )
+                            void removeProduct({ productId: product._id });
+                        }}
+                      >
+                        <Trash2 size={16} />
+                      </button>
+                    </div>
+                  </article>
+                ))}
+              </div>
+            ) : (
+              <div className="portfolio-empty">
+                <Package size={25} />
+                <strong>No products yet</strong>
+                <span>
+                  Start with what your organization sells. Campaigns can then
+                  choose the relevant products.
+                </span>
+                <button
+                  className="primary-button"
+                  onClick={() => openProductEditor()}
+                >
+                  Add product
+                </button>
+              </div>
+            )}
+          </section>
+        ) : activeNav === "Overview" ? (
+          <section className="portfolio-page">
+            <header className="home-header">
+              <div>
+                <h1>{organizationName}</h1>
+                <p>
+                  {(
+                    organizationOverview?.organization as {
+                      description?: string;
+                    } | null
+                  )?.description || "Your organization’s calling workspace."}
+                </p>
+              </div>
+            </header>
+            <div className="stats-grid">
+              <article>
+                <span>Campaigns</span>
+                <strong>{organizationOverview?.campaigns.length || 0}</strong>
+              </article>
+              <article>
+                <span>Products</span>
+                <strong>{organizationOverview?.products.length || 0}</strong>
+              </article>
+              <article>
+                <span>Members</span>
+                <strong>{organizationOverview?.members.length || 0}</strong>
+              </article>
+              <article>
+                <span>Recent activity</span>
+                <strong>{organizationOverview?.activity.length || 0}</strong>
+              </article>
+            </div>
+            <section className="recent-card">
+              <h2>Recent activity</h2>
+              {organizationActivity.slice(0, 6).map((item) => (
+                <div className="recent-call" key={item._id}>
+                  <span className="recent-icon">
+                    <ActivityIcon size={16} />
+                  </span>
+                  <div>
+                    <strong>{item.message}</strong>
+                    <small>
+                      {new Date(item.createdAt).toLocaleDateString()}
+                    </small>
+                  </div>
+                </div>
+              ))}
+              {!organizationActivity.length && (
+                <p className="empty-copy">
+                  Organization activity will appear here.
+                </p>
+              )}
+            </section>
+          </section>
+        ) : activeNav === "Members" ? (
+          <section className="resource-page">
+            <header className="home-header">
+              <div>
+                <h1>Members</h1>
+                <p>People who can work this organization.</p>
+              </div>
+            </header>
+            <form
+              className="resource-form compact-form"
+              onSubmit={(event) => {
+                event.preventDefault();
+                void inviteMember({ ...memberDraft, role: "member" }).then(() =>
+                  setMemberDraft({ name: "", email: "", title: "" }),
+                );
+              }}
+            >
+              <label>
+                Name
+                <input
+                  required
+                  value={memberDraft.name}
+                  onChange={(event) =>
+                    setMemberDraft({ ...memberDraft, name: event.target.value })
+                  }
+                />
+              </label>
+              <label>
+                Email
+                <input
+                  type="email"
+                  required
+                  value={memberDraft.email}
+                  onChange={(event) =>
+                    setMemberDraft({
+                      ...memberDraft,
+                      email: event.target.value,
+                    })
+                  }
+                />
+              </label>
+              <label>
+                Title
+                <input
+                  value={memberDraft.title}
+                  onChange={(event) =>
+                    setMemberDraft({
+                      ...memberDraft,
+                      title: event.target.value,
+                    })
+                  }
+                />
+              </label>
+              <button className="primary-button">
+                <UserPlus size={16} /> Invite
+              </button>
+            </form>
+            <div className="resource-list">
+              {organizationMembers.map((member) => (
+                <div key={member._id}>
+                  <strong>{member.name}</strong>
+                  <span>
+                    {member.title || member.role} · {member.email}
+                  </span>
+                  <button
+                    className="secondary-button destructive-button"
+                    onClick={() => void removeMember({ memberId: member._id })}
+                  >
+                    Remove
+                  </button>
+                </div>
+              ))}
+            </div>
+          </section>
+        ) : activeNav === "Activity" ? (
+          <section className="portfolio-page">
+            <header className="home-header">
+              <div>
+                <h1>Activity</h1>
+                <p>A record of changes and work across {organizationName}.</p>
+              </div>
+            </header>
+            <section className="recent-card activity-feed">
+              {organizationActivity.length ? (
+                organizationActivity.map((item) => (
+                  <div className="recent-call" key={item._id}>
+                    <span className="recent-icon">
+                      <ActivityIcon size={16} />
+                    </span>
+                    <div>
+                      <strong>{item.message}</strong>
+                      <small>{new Date(item.createdAt).toLocaleString()}</small>
+                    </div>
+                  </div>
+                ))
+              ) : (
+                <p className="empty-copy">No activity yet.</p>
+              )}
+            </section>
+          </section>
+        ) : activeNav === "Acquaintances" ? (
+          <section className="resource-page">
+            <header className="home-header">
+              <div>
+                <h1>Acquaintances</h1>
+                <p>Your professional network outside of prospecting.</p>
+              </div>
+            </header>
+            <form
+              className="resource-form compact-form"
+              onSubmit={(event) => {
+                event.preventDefault();
+                void addAcquaintance(acquaintanceDraft).then(() =>
+                  setAcquaintanceDraft({ name: "", email: "" }),
+                );
+              }}
+            >
+              <label>
+                Name
+                <input
+                  required
+                  value={acquaintanceDraft.name}
+                  onChange={(event) =>
+                    setAcquaintanceDraft({
+                      ...acquaintanceDraft,
+                      name: event.target.value,
+                    })
+                  }
+                />
+              </label>
+              <label>
+                Email
+                <input
+                  type="email"
+                  required
+                  value={acquaintanceDraft.email}
+                  onChange={(event) =>
+                    setAcquaintanceDraft({
+                      ...acquaintanceDraft,
+                      email: event.target.value,
+                    })
+                  }
+                />
+              </label>
+              <button className="primary-button">
+                <Plus size={16} /> Add
+              </button>
+            </form>
+            <div className="resource-list">
+              {acquaintances.map((item) => (
+                <div key={item._id}>
+                  <strong>{item.name}</strong>
+                  <span>
+                    {item.email} · {item.status}
+                  </span>
+                  <div>
+                    <button
+                      className="secondary-button"
+                      onClick={() =>
+                        void updateAcquaintance({
+                          acquaintanceId: item._id,
+                          status: "accepted",
+                        })
+                      }
+                    >
+                      Accept
+                    </button>
+                    <button
+                      className="secondary-button destructive-button"
+                      onClick={() =>
+                        void removeAcquaintance({ acquaintanceId: item._id })
+                      }
+                    >
+                      Remove
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </section>
         ) : activeNav === "Campaigns" ? (
           <section className="campaign-page">
             {!selectedCampaignId ? (
@@ -1590,12 +2059,21 @@ function App({ initialSipProfile }: { initialSipProfile?: SipProfile }) {
                     <h1>Campaigns</h1>
                     <p>Choose one selling motion at a time.</p>
                   </div>
-                  <button
-                    className="primary-button"
-                    onClick={() => setCreateCampaignOpen(true)}
-                  >
-                    <Plus size={16} /> Add campaign
-                  </button>
+                  <div className="campaign-header-actions">
+                    <button
+                      className="secondary-button"
+                      disabled={demoSeeding}
+                      onClick={() => void addDemoData()}
+                    >
+                      {demoSeeding ? "Adding workspace…" : "Add workspace data"}
+                    </button>
+                    <button
+                      className="primary-button"
+                      onClick={() => setCreateCampaignOpen(true)}
+                    >
+                      <Plus size={16} /> Add campaign
+                    </button>
+                  </div>
                 </header>
                 <label className="campaign-search">
                   <Search size={16} />
@@ -1928,11 +2406,9 @@ function App({ initialSipProfile }: { initialSipProfile?: SipProfile }) {
                         </button>
                         <button
                           className="primary-button"
-                          onClick={() =>
-                            void startCampaign(campaignDetail.campaign._id)
-                          }
+                          onClick={() => setCampaignSection("Lead lists")}
                         >
-                          <Phone size={15} /> Work campaign
+                          <LayoutList size={15} /> Choose list
                         </button>
                       </div>
                     </header>
@@ -1956,6 +2432,59 @@ function App({ initialSipProfile }: { initialSipProfile?: SipProfile }) {
                     </nav>
                     {campaignSection === "Overview" && (
                       <>
+                        <section
+                          className="campaign-list-picker"
+                          aria-label="Choose a lead list"
+                        >
+                          <div>
+                            <h2>Choose a lead list</h2>
+                            <p>
+                              Dial one list at a time. Each list stays private
+                              to this campaign.
+                            </p>
+                          </div>
+                          <div className="campaign-list-options">
+                            {campaignDetail.leadLists.length ? (
+                              campaignDetail.leadLists.map((list) => (
+                                <button
+                                  key={list._id}
+                                  className={
+                                    selectedCampaignLeadListId === list._id
+                                      ? "selected"
+                                      : ""
+                                  }
+                                  onClick={() =>
+                                    setSelectedCampaignLeadListId(list._id)
+                                  }
+                                >
+                                  <span>
+                                    <strong>{list.name}</strong>
+                                    <small>
+                                      {list.queuedCount} callable of{" "}
+                                      {list.leadCount} leads
+                                    </small>
+                                  </span>
+                                  {selectedCampaignLeadListId === list._id && (
+                                    <CheckCircle2 size={16} />
+                                  )}
+                                </button>
+                              ))
+                            ) : (
+                              <button
+                                className="empty-list-choice"
+                                onClick={() => setCampaignSection("Lead lists")}
+                              >
+                                <span>
+                                  <strong>No lead lists yet</strong>
+                                  <small>
+                                    Import a CSV to create your first list.
+                                  </small>
+                                </span>
+                                <Plus size={16} />
+                              </button>
+                            )}
+                          </div>
+                        </section>
                         <section className="campaign-workspace">
                           <header className="campaign-workspace-header">
                             <div>
@@ -1989,10 +2518,13 @@ function App({ initialSipProfile }: { initialSipProfile?: SipProfile }) {
                               <button
                                 className="primary-button"
                                 disabled={
+                                  !selectedCampaignLeadListId ||
                                   !campaignDetail.leads.some(
                                     (lead) =>
-                                      lead.status === "queued" ||
-                                      lead.status === "working",
+                                      lead.leadListId ===
+                                        selectedCampaignLeadListId &&
+                                      (lead.status === "queued" ||
+                                        lead.status === "working"),
                                   )
                                 }
                                 onClick={() =>
@@ -2051,7 +2583,10 @@ function App({ initialSipProfile }: { initialSipProfile?: SipProfile }) {
                                           lead.status === "do_not_call"
                                         }
                                         onClick={() =>
-                                          void dialCampaignLead(lead._id)
+                                          void dialCampaignLead(
+                                            lead._id,
+                                            lead.leadListId,
+                                          )
                                         }
                                       >
                                         <Phone size={14} />
@@ -2921,7 +3456,8 @@ function App({ initialSipProfile }: { initialSipProfile?: SipProfile }) {
               <div className="queue-heading">
                 <span className="status-dot" />{" "}
                 <strong>
-                  {dialerWorkspace?.activeCampaign?.name || "Choose a campaign"}
+                  {dialerWorkspace?.activeLeadList?.name ||
+                    "Choose a lead list"}
                 </strong>
                 <span className="queue-count">
                   {leads.length} contacts remaining
@@ -2985,7 +3521,11 @@ function App({ initialSipProfile }: { initialSipProfile?: SipProfile }) {
                         {dialerWorkspace?.activeCampaign?.name ||
                           "Choose a campaign"}
                       </strong>
-                      <small>{leads.length} queued leads</small>
+                      <small>
+                        {dialerWorkspace?.activeLeadList?.name ||
+                          "Choose a lead list"}{" "}
+                        · {leads.length} queued leads
+                      </small>
                     </div>
                     <div className="lead-section lead-list-only">
                       {leads.length ? (
@@ -3007,8 +3547,8 @@ function App({ initialSipProfile }: { initialSipProfile?: SipProfile }) {
                         ))
                       ) : (
                         <p className="queue-empty">
-                          Choose a campaign, attach a lead list, then return
-                          here to dial.
+                          Choose a campaign and one of its lead lists, then
+                          return here to dial.
                         </p>
                       )}
                     </div>
@@ -3047,6 +3587,28 @@ function App({ initialSipProfile }: { initialSipProfile?: SipProfile }) {
                           <b>{queueLead?.listName || "Campaign"}</b>
                         </span>
                       </div>
+                      {(queueLead?.website || queueLead?.googleMapsUrl) && (
+                        <div className="research-actions">
+                          {queueLead.website && (
+                            <button
+                              onClick={() =>
+                                void openResearchLink(queueLead.website!)
+                              }
+                            >
+                              Website
+                            </button>
+                          )}
+                          {queueLead.googleMapsUrl && (
+                            <button
+                              onClick={() =>
+                                void openResearchLink(queueLead.googleMapsUrl!)
+                              }
+                            >
+                              Maps
+                            </button>
+                          )}
+                        </div>
+                      )}
                     </div>
                     <div className="lead-section">
                       <h3>Account notes</h3>
@@ -3649,6 +4211,152 @@ function App({ initialSipProfile }: { initialSipProfile?: SipProfile }) {
               </>
             )}
           </>
+        )}
+        {productEditorOpen && (
+          <div className="campaign-modal-backdrop" role="presentation">
+            <form
+              className="campaign-create-modal product-editor-modal"
+              onSubmit={saveProduct}
+            >
+              <header>
+                <div>
+                  <h2>{editingProductId ? "Edit product" : "Add product"}</h2>
+                  <p>
+                    Keep the catalog detailed once, then reuse the product
+                    across campaigns.
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  className="text-button"
+                  onClick={() => setProductEditorOpen(false)}
+                >
+                  Close
+                </button>
+              </header>
+              <label>
+                Product name
+                <input
+                  required
+                  autoFocus
+                  value={productDraft.name}
+                  onChange={(event) =>
+                    setProductDraft({
+                      ...productDraft,
+                      name: event.target.value,
+                    })
+                  }
+                  placeholder="Website Development"
+                />
+              </label>
+              <label>
+                Short description
+                <textarea
+                  required
+                  value={productDraft.description}
+                  onChange={(event) =>
+                    setProductDraft({
+                      ...productDraft,
+                      description: event.target.value,
+                    })
+                  }
+                  placeholder="What it does in one clear sentence."
+                />
+              </label>
+              <div className="modal-section">
+                <h3>Sales context</h3>
+                <label>
+                  Who we are
+                  <textarea
+                    value={productDraft.whoWeAre}
+                    onChange={(event) =>
+                      setProductDraft({
+                        ...productDraft,
+                        whoWeAre: event.target.value,
+                      })
+                    }
+                  />
+                </label>
+                <label>
+                  Who we help
+                  <textarea
+                    value={productDraft.whoWeHelp}
+                    onChange={(event) =>
+                      setProductDraft({
+                        ...productDraft,
+                        whoWeHelp: event.target.value,
+                      })
+                    }
+                  />
+                </label>
+                <label>
+                  Elevator pitch
+                  <textarea
+                    value={productDraft.elevatorPitch}
+                    onChange={(event) =>
+                      setProductDraft({
+                        ...productDraft,
+                        elevatorPitch: event.target.value,
+                      })
+                    }
+                  />
+                </label>
+                <label>
+                  Common objections
+                  <textarea
+                    value={productDraft.commonObjections}
+                    onChange={(event) =>
+                      setProductDraft({
+                        ...productDraft,
+                        commonObjections: event.target.value,
+                      })
+                    }
+                  />
+                </label>
+              </div>
+              <div className="booking-fields">
+                <label>
+                  Booking provider
+                  <select
+                    value={productDraft.bookingProvider}
+                    onChange={(event) =>
+                      setProductDraft({
+                        ...productDraft,
+                        bookingProvider: event.target.value,
+                      })
+                    }
+                  >
+                    <option value="calcom">Cal.com</option>
+                    <option value="calendly">Calendly</option>
+                  </select>
+                </label>
+                <label>
+                  Booking link
+                  <input
+                    type="url"
+                    value={productDraft.bookingUrl}
+                    onChange={(event) =>
+                      setProductDraft({
+                        ...productDraft,
+                        bookingUrl: event.target.value,
+                      })
+                    }
+                    placeholder="https://cal.com/..."
+                  />
+                </label>
+              </div>
+              <footer>
+                <button
+                  type="button"
+                  className="secondary-button"
+                  onClick={() => setProductEditorOpen(false)}
+                >
+                  Cancel
+                </button>
+                <button className="primary-button">Save product</button>
+              </footer>
+            </form>
+          </div>
         )}
       </main>
       <audio ref={remoteAudio} autoPlay />

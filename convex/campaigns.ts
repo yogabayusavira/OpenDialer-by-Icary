@@ -153,9 +153,10 @@ export const campaignDetail = query({
     const campaign = await ctx.db.get(args.campaignId);
     if (!campaign || campaign.organizationId !== organizationId)
       throw new Error("That campaign is not available.");
-    const [offer, playbook, listResults] = await Promise.all([
+    const [offer, playbook, products, listResults] = await Promise.all([
       campaign.offerId ? ctx.db.get(campaign.offerId) : null,
       campaign.playbookId ? ctx.db.get(campaign.playbookId) : null,
+      Promise.all((campaign.productIds || []).map((id) => ctx.db.get(id))),
       Promise.all(
         (campaign.leadListIds || []).map(async (id) => {
           const list = await ctx.db.get(id);
@@ -182,7 +183,14 @@ export const campaignDetail = query({
     const leads = attachedLists
       .flatMap(({ leads }) => leads)
       .sort((a, b) => a.importedAt - b.importedAt);
-    return { campaign, offer, playbook, leadLists, leads };
+    return {
+      campaign,
+      offer,
+      playbook,
+      products: products.filter(Boolean),
+      leadLists,
+      leads,
+    };
   },
 });
 
