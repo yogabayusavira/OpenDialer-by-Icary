@@ -1307,20 +1307,20 @@ textarea:focus-visible {
 .lead-event {
   margin: 14px;
   padding: 11px;
-  border: 1px solid #f1d88a;
+  border: 1px solid #c9dff7;
   border-radius: 7px;
-  background: #fffaf0;
+  background: #f0f7ff;
 }
 .lead-event strong,
 .lead-section h3 {
-  color: #8b6c14;
+  color: #1666d8;
   font-size: 9px;
   text-transform: uppercase;
   letter-spacing: 0.06em;
 }
 .lead-event p {
   margin: 6px 0 0;
-  color: #62583c;
+  color: #3b587a;
   font-size: 10px;
   line-height: 1.45;
 }
@@ -1520,14 +1520,14 @@ textarea:focus-visible {
   background: #193b61;
 }
 .lead-event {
-  border-color: #72581a;
-  background: #2b3b43;
+  border-color: #24496f;
+  background: #172b44;
 }
 .lead-event strong {
-  color: #ffcf4a;
+  color: #96b7f6;
 }
 .lead-event p {
-  color: #fff0c9;
+  color: #d5e4f5;
 }
 .lead-section h3 {
   color: #9eb8d6;
