@@ -231,7 +231,6 @@ function App({ initialSipProfile }: { initialSipProfile?: SipProfile }) {
     playbookId: "",
     leadListIds: [] as string[],
   });
-  const [campaignSearch, setCampaignSearch] = useState("");
   const [campaignPage, setCampaignPage] = useState(1);
   const [createCampaignOpen, setCreateCampaignOpen] = useState(false);
   const [newCampaignSetup, setNewCampaignSetup] = useState({
@@ -1570,66 +1569,108 @@ function App({ initialSipProfile }: { initialSipProfile?: SipProfile }) {
                 <p>The campaigns you can work across your organizations.</p>
               </div>
             </header>
-            <div className="portfolio-list">
-              {myCampaigns.length ? (
-                myCampaigns.map((campaign) => (
-                  <article
-                    key={campaign._id}
-                    className={`campaign-row ${dialerWorkspace?.activeCampaign?._id === campaign._id ? "active-campaign" : ""}`}
-                  >
-                    <div>
-                      <h2>{campaign.name}</h2>
-                      <p>
-                        {campaign.organizationName} · {campaign.leadCount}{" "}
-                        callable leads ·{" "}
-                        {campaign.status === "active"
-                          ? "Active"
-                          : "Ready to set up"}
-                      </p>
-                    </div>
-                    <div className="campaign-row-actions">
+            {myCampaigns.length ? (
+              <div className="campaign-index">
+                {myCampaigns.map((campaign) => {
+                  const offer = campaignWorkspace?.offers.find(
+                    (item: any) => item._id === campaign.offerId,
+                  );
+                  const displayProducts =
+                    (campaign as any).products && (campaign as any).products.length > 0
+                      ? (campaign as any).products
+                      : null;
+                  const tags = displayProducts
+                    ? displayProducts.map((p: any) => p.name)
+                    : offer?.tags || (offer?.name ? [offer.name] : []);
+                  return (
+                    <article className="campaign-card" key={campaign._id}>
                       <button
-                        className="secondary-button"
+                        type="button"
+                        className="campaign-card-main"
                         onClick={() => openCampaign(campaign._id)}
                       >
-                        Open
+                        <div className="campaign-card-header">
+                          <div className="campaign-card-title-group">
+                            <strong>{campaign.name}</strong>
+                            <span className="campaign-card-subtitle">
+                              {campaign.status === "active"
+                                ? "Ready to dial"
+                                : "Draft"}
+                            </span>
+                          </div>
+                        </div>
+                        {tags.length > 0 && (
+                          <div className="campaign-card-products">
+                            {tags.slice(0, 3).map((tag: string) => (
+                              <span className="campaign-product-pill" key={tag}>
+                                {tag}
+                              </span>
+                            ))}
+                            {tags.length > 3 && (
+                              <span className="campaign-product-more">
+                                +{tags.length - 3}
+                              </span>
+                            )}
+                          </div>
+                        )}
+                        <div className="campaign-card-metrics">
+                          <div className="card-metric">
+                            <span className="metric-value">
+                              {(campaign as any).totalLeads ?? (campaign as any).leadCount ?? 0}
+                            </span>
+                            <span className="metric-label">leads</span>
+                          </div>
+                          <div className="card-metric">
+                            <span className="metric-value">
+                              {(campaign as any).callableLeads ?? (campaign as any).leadCount ?? 0}
+                            </span>
+                            <span className="metric-label">callable</span>
+                          </div>
+                        </div>
                       </button>
-                      <button
-                        className="secondary-button destructive-button"
-                        onClick={() =>
-                          void removeFromMyCampaigns({
-                            campaignId: campaign._id,
-                          })
-                        }
-                      >
-                        Remove
-                      </button>
-                      <button
-                        className="primary-button"
-                        onClick={() => openCampaign(campaign._id)}
-                      >
-                        Choose list
-                      </button>
-                    </div>
-                  </article>
-                ))
-              ) : (
-                <div className="portfolio-empty">
-                  <BookOpen size={24} />
-                  <strong>No campaigns selected</strong>
-                  <span>
-                    Open a campaign in an organization and add it to My
-                    campaigns when you want it in your working set.
-                  </span>
-                  <button
-                    className="primary-button"
-                    onClick={() => setActiveNav("Campaigns")}
-                  >
-                    Browse campaigns
-                  </button>
-                </div>
-              )}
-            </div>
+                      <footer>
+                        <button
+                          type="button"
+                          className="text-button card-open-action"
+                          onClick={() => openCampaign(campaign._id)}
+                        >
+                          Open workspace <ChevronRight size={14} />
+                        </button>
+                        <button
+                          type="button"
+                          className="save-campaign-button saved"
+                          title="Remove from My campaigns"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            void removeFromMyCampaigns({
+                              campaignId: campaign._id,
+                            });
+                          }}
+                        >
+                          <Bookmark size={13} fill="#111" />
+                          <span>Saved</span>
+                        </button>
+                      </footer>
+                    </article>
+                  );
+                })}
+              </div>
+            ) : (
+              <div className="portfolio-empty">
+                <BookOpen size={24} />
+                <strong>No campaigns selected</strong>
+                <span>
+                  Open a campaign in an organization and add it to My
+                  campaigns when you want it in your working set.
+                </span>
+                <button
+                  className="primary-button"
+                  onClick={() => setActiveNav("Campaigns")}
+                >
+                  Browse campaigns
+                </button>
+              </div>
+            )}
             {resourceError && (
               <p className="settings-error" role="alert">
                 {resourceError}
@@ -1989,38 +2030,15 @@ function App({ initialSipProfile }: { initialSipProfile?: SipProfile }) {
                     </button>
                   </div>
                 </header>
-                <label className="campaign-search">
-                  <Search size={16} />
-                  <input
-                    value={campaignSearch}
-                    onChange={(event) => {
-                      setCampaignSearch(event.target.value);
-                      setCampaignPage(1);
-                    }}
-                    placeholder="Search campaigns"
-                  />
-                </label>
                 {(() => {
+                  const allCampaigns = campaignWorkspace?.campaigns || [];
                   const CAMPAIGNS_PER_PAGE = 6;
-                  const filtered = (campaignWorkspace?.campaigns || []).filter(
-                    (campaign) =>
-                      campaign.name
-                        .toLowerCase()
-                        .includes(campaignSearch.trim().toLowerCase()) ||
-                      campaignWorkspace?.offers
-                        .find((offer) => offer._id === campaign.offerId)
-                        ?.tags?.some((tag) =>
-                          tag
-                            .toLowerCase()
-                            .includes(campaignSearch.trim().toLowerCase()),
-                        ),
-                  );
                   const totalPages = Math.max(
                     1,
-                    Math.ceil(filtered.length / CAMPAIGNS_PER_PAGE),
+                    Math.ceil(allCampaigns.length / CAMPAIGNS_PER_PAGE),
                   );
                   const currentPage = Math.min(campaignPage, totalPages);
-                  const paginated = filtered.slice(
+                  const paginated = allCampaigns.slice(
                     (currentPage - 1) * CAMPAIGNS_PER_PAGE,
                     currentPage * CAMPAIGNS_PER_PAGE,
                   );
@@ -2513,64 +2531,92 @@ function App({ initialSipProfile }: { initialSipProfile?: SipProfile }) {
                           .map((p) => p!._id),
                       );
                       return (
-                        <section className="campaign-form-detail campaign-product-tab">
-                          <div className="campaign-product-header">
+                        <section className="campaign-workspace">
+                          <header className="campaign-workspace-header">
                             <div>
                               <h2>Products</h2>
-                              <p>Select all products being sold in this campaign.</p>
+                              <p>
+                                Select the products sold in this campaign ({campaignDetail.products.filter(Boolean).length} linked).
+                              </p>
                             </div>
-                          </div>
-                          <div className="campaign-product-checklist">
-                            {products.length ? (
-                              products.map((p) => {
-                                const checked = linkedProductIds.has(p._id);
+                            <button
+                              type="button"
+                              className="secondary-button"
+                              onClick={() => {
+                                setSelectedCampaignId(null);
+                                setActiveNav("Products");
+                              }}
+                            >
+                              Manage catalog
+                            </button>
+                          </header>
+                          {products.length ? (
+                            <div className="campaign-index" style={{ padding: "20px", marginTop: 0 }}>
+                              {products.map((product) => {
+                                const isLinked = linkedProductIds.has(product._id);
                                 return (
-                                  <label
-                                    key={p._id}
-                                    className={`campaign-product-check-row ${checked ? "checked" : ""}`}
-                                  >
-                                    <input
-                                      type="checkbox"
-                                      checked={checked}
-                                      onChange={() =>
+                                  <article className="campaign-card" key={product._id}>
+                                    <button
+                                      type="button"
+                                      className="campaign-card-main"
+                                      onClick={() =>
                                         void toggleProductInCampaign({
                                           campaignId: campaignDetail.campaign._id,
-                                          productId: p._id,
+                                          productId: product._id,
                                         })
                                       }
-                                    />
-                                    <span className="campaign-product-check-info">
-                                      <strong>{p.name}</strong>
-                                      {p.description && (
-                                        <small>{p.description}</small>
+                                    >
+                                      <div className="campaign-card-header">
+                                        <div className="campaign-card-title-group">
+                                          <strong>{product.name}</strong>
+                                          <span className="campaign-card-subtitle">
+                                            {product.whoWeHelp ? `Target: ${product.whoWeHelp}` : "Product"}
+                                          </span>
+                                        </div>
+                                      </div>
+                                      <p className="product-description-snippet">
+                                        {product.description ||
+                                          product.elevatorPitch ||
+                                          "No description provided."}
+                                      </p>
+                                      {product.tags && product.tags.length > 0 && (
+                                        <div className="campaign-card-products">
+                                          {product.tags.map((tag: string) => (
+                                            <span key={tag} className="campaign-product-pill">
+                                              {tag}
+                                            </span>
+                                          ))}
+                                        </div>
                                       )}
-                                    </span>
-                                    {checked && (
-                                      <CheckCircle2 size={16} className="check-icon" />
-                                    )}
-                                  </label>
+                                    </button>
+                                    <footer>
+                                      <span className="card-open-action">
+                                        {isLinked ? "Included in campaign" : "Not included"}
+                                      </span>
+                                      <button
+                                        type="button"
+                                        className={`save-campaign-button ${isLinked ? "saved" : ""}`}
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          void toggleProductInCampaign({
+                                            campaignId: campaignDetail.campaign._id,
+                                            productId: product._id,
+                                          });
+                                        }}
+                                      >
+                                        <Bookmark size={13} fill={isLinked ? "#111" : "none"} />
+                                        <span>{isLinked ? "Linked" : "Link"}</span>
+                                      </button>
+                                    </footer>
+                                  </article>
                                 );
-                              })
-                            ) : (
-                              <div className="campaign-workspace-empty">
-                                <Package size={22} />
-                                <strong>No products in catalog</strong>
-                                <span>Add products in the Products page first.</span>
-                              </div>
-                            )}
-                          </div>
-                          {campaignDetail.products.filter(Boolean).length > 0 && (
-                            <div className="campaign-product-summary">
-                              <strong>Selected products:</strong>
-                              <div className="campaign-card-products">
-                                {campaignDetail.products
-                                  .filter((p) => p != null)
-                                  .map((p) => (
-                                    <span key={p!._id} className="campaign-product-pill selected-pill">
-                                      {p!.name}
-                                    </span>
-                                  ))}
-                              </div>
+                              })}
+                            </div>
+                          ) : (
+                            <div className="campaign-workspace-empty">
+                              <Package size={22} />
+                              <strong>No products in catalog</strong>
+                              <span>Add products in the Products catalog to attach them to campaigns.</span>
                             </div>
                           )}
                         </section>
