@@ -1968,7 +1968,12 @@ textarea:focus-visible {
   background: #111;
 }
 .main-area {
-  background: #fff !important;
+  background-color: #f7f8fa !important;
+  background-image: url('/Cubes%20BG.png') !important;
+  background-size: cover !important;
+  background-position: center !important;
+  background-repeat: no-repeat !important;
+  background-attachment: fixed !important;
   border-top-left-radius: 8px !important;
   clip-path: none;
 }
