@@ -10,8 +10,8 @@
     "preview": "vite preview",
     "convex:dev": "convex dev",
     "tauri": "tauri",
-    "tauri:dev": "set RUSTUP_HOME=&& set CARGO_HOME=&& set PATH=%USERPROFILE%\\.cargo\\bin;%PATH%&& tauri dev",
-    "tauri:build": "set RUSTUP_HOME=&& set CARGO_HOME=&& set PATH=%USERPROFILE%\\.cargo\\bin;%PATH%&& tauri build"
+    "tauri:dev": "tauri dev",
+    "tauri:build": "tauri build"
   },
   "dependencies": {
     "@auth/core": "^0.41.1",
