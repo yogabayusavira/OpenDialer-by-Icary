@@ -1964,18 +1964,40 @@ textarea:focus-visible {
   border-color: #c8c8c8;
   background: #fff;
 }
-.app-shell {
-  background: #111;
-}
 .main-area {
-  background-color: #f7f8fa !important;
-  background-image: url('/Cubes%20BG.png') !important;
-  background-size: cover !important;
-  background-position: center !important;
-  background-repeat: no-repeat !important;
-  background-attachment: fixed !important;
+  position: relative;
+  background-color: #f9fafb !important;
   border-top-left-radius: 8px !important;
   clip-path: none;
+}
+.main-area::before {
+  content: "";
+  position: fixed;
+  top: 48px;
+  left: 252px;
+  right: 0;
+  bottom: 0;
+  background-image: url('/Cubes%20BG.png');
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  opacity: 0.10;
+  pointer-events: none;
+  z-index: 0;
+}
+@media (max-width: 1260px) and (min-width: 1021px) {
+  .main-area::before {
+    left: 220px;
+  }
+}
+@media (max-width: 1020px) {
+  .main-area::before {
+    left: 62px;
+  }
+}
+.main-area > * {
+  position: relative;
+  z-index: 1;
 }
 .main-area .queue-bar {
   border-top-left-radius: 8px !important;
