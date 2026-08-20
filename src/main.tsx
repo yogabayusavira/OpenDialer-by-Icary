@@ -32,6 +32,7 @@ import {
   ListPlus,
   Mail,
   MailPlus,
+  MessageSquare,
   MicOff,
   MoreHorizontal,
   Package,
@@ -1233,6 +1234,17 @@ function App({ initialSipProfile }: { initialSipProfile?: SipProfile }) {
                 <CalendarDays size={18} />
               </Icon>
               <span>My Calendar</span>
+              <small>soon</small>
+            </button>
+            <button
+              className="nav-item coming-nav"
+              disabled
+              title="Coming soon"
+            >
+              <Icon>
+                <MessageSquare size={18} />
+              </Icon>
+              <span>Messages</span>
               <small>soon</small>
             </button>
             <button
