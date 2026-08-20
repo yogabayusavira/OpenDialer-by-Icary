@@ -14,6 +14,7 @@ import {
   Bell,
   BookOpen,
   Bot,
+  Briefcase,
   CalendarDays,
   CheckCircle2,
   ChevronDown,
@@ -1222,6 +1223,28 @@ function App({ initialSipProfile }: { initialSipProfile?: SipProfile }) {
                 <BookOpen size={18} />
               </Icon>
               <span>My campaigns</span>
+            </button>
+            <button
+              className="nav-item coming-nav"
+              disabled
+              title="Coming soon"
+            >
+              <Icon>
+                <CalendarDays size={18} />
+              </Icon>
+              <span>My Calendar</span>
+              <small>soon</small>
+            </button>
+            <button
+              className="nav-item coming-nav"
+              disabled
+              title="Coming soon"
+            >
+              <Icon>
+                <Briefcase size={18} />
+              </Icon>
+              <span>Job Board</span>
+              <small>soon</small>
             </button>
             <button
               className="nav-item coming-nav"
