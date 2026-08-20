@@ -5201,8 +5201,13 @@ body,
 
 /* Product Editor In-Page Structured View */
 .product-editor-view {
-  max-width: 900px;
   width: 100%;
+}
+.header-actions,
+.product-editor-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
 }
 .product-editor-topbar {
   margin-bottom: 24px;
@@ -5211,6 +5216,7 @@ body,
   display: flex;
   flex-direction: column;
   gap: 20px;
+  width: 100%;
 }
 .product-editor-card {
   background: #fff;
