@@ -1,0 +1,35 @@
+{
+  "name": "icary-open-dialer",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite --config vite.config.ts",
+    "desktop:dev": "vite --config vite.config.ts --port 1420 --strictPort",
+    "build": "tsc -b && vite build",
+    "preview": "vite preview",
+    "convex:dev": "convex dev",
+    "tauri": "tauri",
+    "tauri:dev": "set RUSTUP_HOME=&& set CARGO_HOME=&& set PATH=%USERPROFILE%\\.cargo\\bin;%PATH%&& tauri dev",
+    "tauri:build": "set RUSTUP_HOME=&& set CARGO_HOME=&& set PATH=%USERPROFILE%\\.cargo\\bin;%PATH%&& tauri build"
+  },
+  "dependencies": {
+    "@auth/core": "^0.41.1",
+    "@convex-dev/auth": "^0.0.95",
+    "@tauri-apps/api": "^2.11.1",
+    "@vitejs/plugin-react": "latest",
+    "convex": "^1.44.0",
+    "lucide-react": "latest",
+    "react": "latest",
+    "react-dom": "latest",
+    "sip.js": "^0.21.2",
+    "typescript": "latest",
+    "vite": "latest"
+  },
+  "devDependencies": {
+    "@tauri-apps/cli": "^2.11.4",
+    "@types/node": "latest",
+    "@types/react": "latest",
+    "@types/react-dom": "latest"
+  }
+}

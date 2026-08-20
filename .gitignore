@@ -1,0 +1,15 @@
+# Local credentials and machine-specific configuration
+.env
+.env.*
+!.env.example
+
+# Build output
+dist/
+node_modules/
+src-tauri/target/
+*.tsbuildinfo
+vite.config.js
+vite.config.d.ts
+
+# Local launcher
+run-dev.bat
