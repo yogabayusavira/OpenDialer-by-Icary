@@ -4562,7 +4562,6 @@ function App({ initialSipProfile }: { initialSipProfile?: SipProfile }) {
                                 )}
                               </div>
                             </div>
-                            {queueIndex === index && <em>Now</em>}
                           </button>
                         ))
                       ) : (

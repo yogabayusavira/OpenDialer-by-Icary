@@ -1261,7 +1261,7 @@ textarea:focus-visible {
 
 /* Persistent three-column call desk: context, conversation, AI. */
 .call-workspace {
-  grid-template-columns: 255px minmax(420px, 1fr) 300px;
+  grid-template-columns: 300px minmax(420px, 1fr) 300px;
   align-items: start;
 }
 .lead-context {
@@ -1371,7 +1371,7 @@ textarea:focus-visible {
 .vertical-lead:hover {
   background: #f4f8ff;
 }
-.vertical-lead span {
+.vertical-lead > span {
   display: grid;
   flex-shrink: 0;
   place-items: center;
@@ -1446,8 +1446,6 @@ textarea:focus-visible {
 }
 .vertical-lead.active {
   background: #f0f6ff;
-  border-left: 3px solid #1666d8;
-  padding-left: 7px;
 }
 .queue-ready {
   min-height: 410px;
@@ -1457,7 +1455,7 @@ textarea:focus-visible {
 }
 @media (max-width: 1260px) {
   .call-workspace {
-    grid-template-columns: 225px minmax(0, 1fr) 280px;
+    grid-template-columns: 270px minmax(0, 1fr) 280px;
   }
 }
 @media (max-width: 1020px) {
@@ -1611,15 +1609,14 @@ textarea:focus-visible {
   color: #a9c0da;
   background: #1a2a3a;
 }
-.vertical-lead span {
+.vertical-lead > span {
   color: #fff;
   background: #2464a7;
 }
 .vertical-lead.active {
   background: #0d1e35;
-  border-left-color: #4a9eff;
 }
-.vertical-lead.active span {
+.vertical-lead.active > span {
   background: #4a9eff;
   color: #fff;
 }
@@ -1982,11 +1979,11 @@ textarea:focus-visible {
 .vertical-lead {
   border-color: #333;
 }
-.vertical-lead span {
+.vertical-lead > span {
   color: #111;
   background: #d9d9d9;
 }
-.vertical-lead.active span {
+.vertical-lead.active > span {
   color: #fff;
   background: #111;
 }
@@ -2143,9 +2140,8 @@ body,
 }
 .lead-list-only .vertical-lead.active {
   margin: 4px 0;
-  padding: 10px 7px;
+  padding: 10px;
   border-radius: 8px;
-  border-left: 3px solid #4a9eff;
 }
 .dialpad output {
   grid-column: 1 / -1;
