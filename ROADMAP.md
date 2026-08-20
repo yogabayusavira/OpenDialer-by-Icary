@@ -5,9 +5,9 @@ This roadmap keeps the dialer focused today while documenting the places Icary c
 ## Current focus
 
 - **Dial** — a focused calling workspace with the live conversation, AI assistance, call controls, and one-screen wrap-up.
-- **My campaigns** — a user's view of campaigns they are working across their organizations.
+- **My campaigns** — a user's selected working set across organizations; this is where a rep chooses which campaign to work today.
 - **Organizations** — users start in their **Personal** organization and can later switch between organizations.
-- **Campaign structure** — campaigns organize **Offers**, **Lead lists**, and **Playbooks**. Lead lists will be the home for CSV lead uploads.
+- **Campaign structure** — an organization owns campaigns such as “SMB Websites — Texas”; each campaign contains its own **Offer**, **Lead lists**, and **Playbook**. Lead lists are the home for CSV uploads.
 
 ## MVP delivery order
 
@@ -15,7 +15,7 @@ This roadmap keeps the dialer focused today while documenting the places Icary c
 2. **Lead lists** — CSV import, field mapping, validation, deduplication, and assigning a list to a campaign.
 3. **Campaigns** — create and edit campaigns, attach an Offer, Lead lists, and a Playbook, then start a queue.
 4. **Offers and Playbooks** — create the sales context that guides each campaign and the conversation assistant.
-5. **Home and My campaigns** — a rep's daily view of assigned work, recent calls, and resume-dialing action.
+5. **Home and My campaigns** — a rep's daily view of calls, conversations, meetings, seven-day progress, recent outcomes, and resume-dialing action; My campaigns is the cross-organization campaign picker.
 6. **Settings** — Profile, Numbers, and Integrations. SIP lives under Numbers; calendar, email, CRM, and AI connections live under Integrations.
 
 These are the complete MVP surfaces. Call history, qualification criteria, call outcomes, and import history belong inside the relevant surfaces—not as additional sidebar items.

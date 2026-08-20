@@ -13,9 +13,16 @@ export default defineSchema({
   memberships: defineTable({
     organizationId: v.id("organizations"),
     userId: v.id("users"),
-    role: v.union(v.literal("owner"), v.literal("manager"), v.literal("member")),
+    role: v.union(
+      v.literal("owner"),
+      v.literal("manager"),
+      v.literal("member"),
+    ),
     createdAt: v.number(),
-  }).index("by_organization", ["organizationId"]).index("by_user", ["userId"]).index("by_organization_and_user", ["organizationId", "userId"]),
+  })
+    .index("by_organization", ["organizationId"])
+    .index("by_user", ["userId"])
+    .index("by_organization_and_user", ["organizationId", "userId"]),
   userProfiles: defineTable({
     userId: v.id("users"),
     displayName: v.string(),
@@ -23,19 +30,26 @@ export default defineSchema({
     createdAt: v.number(),
     updatedAt: v.number(),
   }).index("by_user", ["userId"]),
-  userSettings: defineTable({
-    userId: v.id("users"),
-    activeOrganizationId: v.optional(v.id("organizations")),
-    activeCampaignId: v.optional(v.id("campaigns")),
-    onboarding: v.object({
-      sipConnected: v.boolean(),
-      dismissed: v.boolean(),
-    }),
-  }).index("by_user", ["userId"]),
   offers: defineTable({
     organizationId: v.id("organizations"),
+    campaignId: v.optional(v.id("campaigns")),
     name: v.string(),
     description: v.optional(v.string()),
+    tags: v.optional(v.array(v.string())),
+    idealCustomer: v.optional(v.string()),
+    bookingProvider: v.optional(
+      v.union(v.literal("calcom"), v.literal("calendly")),
+    ),
+    bookingUrl: v.optional(v.string()),
+    qualificationCriteria: v.optional(
+      v.array(
+        v.object({
+          label: v.string(),
+          guidance: v.optional(v.string()),
+          required: v.boolean(),
+        }),
+      ),
+    ),
     createdAt: v.number(),
     updatedAt: v.number(),
   }).index("by_organization", ["organizationId"]),
@@ -45,10 +59,30 @@ export default defineSchema({
     playbookId: v.optional(v.id("playbooks")),
     leadListIds: v.optional(v.array(v.id("leadLists"))),
     name: v.string(),
-    status: v.union(v.literal("draft"), v.literal("active"), v.literal("archived")),
+    status: v.union(
+      v.literal("draft"),
+      v.literal("active"),
+      v.literal("archived"),
+    ),
     createdAt: v.number(),
     updatedAt: v.number(),
   }).index("by_organization", ["organizationId"]),
+  userSettings: defineTable({
+    userId: v.id("users"),
+    activeOrganizationId: v.optional(v.id("organizations")),
+    activeCampaignId: v.optional(v.id("campaigns")),
+    onboarding: v.object({
+      sipConnected: v.boolean(),
+      dismissed: v.boolean(),
+    }),
+  }).index("by_user", ["userId"]),
+  campaignAssignments: defineTable({
+    campaignId: v.id("campaigns"),
+    userId: v.id("users"),
+    createdAt: v.number(),
+  })
+    .index("by_user", ["userId"])
+    .index("by_campaign_and_user", ["campaignId", "userId"]),
   playbooks: defineTable({
     organizationId: v.id("organizations"),
     name: v.string(),
@@ -60,10 +94,16 @@ export default defineSchema({
     organizationId: v.id("organizations"),
     campaignId: v.optional(v.id("campaigns")),
     name: v.string(),
-    source: v.union(v.literal("csv"), v.literal("manual"), v.literal("integration")),
+    source: v.union(
+      v.literal("csv"),
+      v.literal("manual"),
+      v.literal("integration"),
+    ),
     createdAt: v.number(),
     updatedAt: v.number(),
-  }).index("by_organization", ["organizationId"]).index("by_campaign", ["campaignId"]),
+  })
+    .index("by_organization", ["organizationId"])
+    .index("by_campaign", ["campaignId"]),
   leads: defineTable({
     organizationId: v.id("organizations"),
     leadListId: v.id("leadLists"),
@@ -73,10 +113,22 @@ export default defineSchema({
     phone: v.optional(v.string()),
     company: v.optional(v.string()),
     title: v.optional(v.string()),
-    status: v.union(v.literal("queued"), v.literal("working"), v.literal("completed"), v.literal("do_not_call")),
+    industry: v.optional(v.string()),
+    location: v.optional(v.string()),
+    website: v.optional(v.string()),
+    googleMapsUrl: v.optional(v.string()),
+    rating: v.optional(v.string()),
+    status: v.union(
+      v.literal("queued"),
+      v.literal("working"),
+      v.literal("completed"),
+      v.literal("do_not_call"),
+    ),
     importedAt: v.number(),
     updatedAt: v.number(),
-  }).index("by_lead_list", ["leadListId"]).index("by_organization", ["organizationId"]),
+  })
+    .index("by_lead_list", ["leadListId"])
+    .index("by_organization", ["organizationId"]),
   calls: defineTable({
     organizationId: v.id("organizations"),
     campaignId: v.optional(v.id("campaigns")),
@@ -86,5 +138,8 @@ export default defineSchema({
     notes: v.optional(v.string()),
     startedAt: v.number(),
     endedAt: v.optional(v.number()),
-  }).index("by_user", ["userId"]).index("by_organization", ["organizationId"]).index("by_lead", ["leadId"]),
+  })
+    .index("by_user", ["userId"])
+    .index("by_organization", ["organizationId"])
+    .index("by_lead", ["leadId"]),
 });
