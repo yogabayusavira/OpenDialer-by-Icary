@@ -103,6 +103,7 @@ export default defineSchema({
     organizationId: v.id("organizations"),
     name: v.string(),
     description: v.string(),
+    tags: v.optional(v.array(v.string())),
     whoWeAre: v.optional(v.string()),
     whoWeHelp: v.optional(v.string()),
     elevatorPitch: v.optional(v.string()),
@@ -113,6 +114,15 @@ export default defineSchema({
       v.union(v.literal("calcom"), v.literal("calendly")),
     ),
     bookingUrl: v.optional(v.string()),
+    qualificationCriteria: v.optional(
+      v.array(
+        v.object({
+          label: v.string(),
+          guidance: v.optional(v.string()),
+          required: v.boolean(),
+        }),
+      ),
+    ),
     createdAt: v.number(),
     updatedAt: v.number(),
   }).index("by_organization", ["organizationId"]),

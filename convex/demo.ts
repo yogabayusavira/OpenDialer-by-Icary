@@ -27,8 +27,10 @@ const companionProducts = [
   {
     name: "Website Development",
     description: "Conversion-led websites for local service companies.",
+    tags: ["Website design", "Local SEO"],
     whoWeAre: "A hands-on web studio for service businesses.",
-    whoWeHelp: "Owner-led companies that depend on local enquiries.",
+    whoWeHelp:
+      "Owner-led Austin service businesses with an outdated website and a steady flow of local customers.",
     elevatorPitch:
       "We turn an outdated site into a clear path from search to booked work.",
     commonObjections:
@@ -37,10 +39,28 @@ const companionProducts = [
     trainingNotes: "Ask where new work comes from before presenting the site.",
     bookingProvider: "calcom" as const,
     bookingUrl: "https://cal.com",
+    qualificationCriteria: [
+      {
+        label: "Has an active local service business",
+        guidance: "Confirm the business serves a local area today.",
+        required: true,
+      },
+      {
+        label: "Can make or influence website decisions",
+        guidance: "Owner, operator, or marketing lead.",
+        required: true,
+      },
+      {
+        label: "Open to improving web enquiries",
+        guidance: "Interest is enough for the first meeting.",
+        required: true,
+      },
+    ],
   },
   {
     name: "Secure Cloud Hosting",
     description: "Managed, secure hosting with a real person to call.",
+    tags: ["Hosting", "Security", "Infrastructure"],
     whoWeAre: "A proactive hosting partner.",
     whoWeHelp:
       "Businesses with critical websites and no in-house infrastructure team.",
@@ -52,11 +72,24 @@ const companionProducts = [
     trainingNotes: "Lead with risk reduction, not technical detail.",
     bookingProvider: "calcom" as const,
     bookingUrl: "https://cal.com",
+    qualificationCriteria: [
+      {
+        label: "Has an active website or web app",
+        guidance: "Must have an existing live property.",
+        required: true,
+      },
+      {
+        label: "Decision maker for IT / hosting",
+        guidance: "Owner or technical lead.",
+        required: true,
+      },
+    ],
   },
   {
     name: "AI Voice Receptionist",
     description:
       "An always-on phone receptionist that captures and routes every caller.",
+    tags: ["AI", "Voice", "Automation"],
     whoWeAre: "Practical AI automation for busy service teams.",
     whoWeHelp: "Companies missing after-hours and overflow calls.",
     elevatorPitch:
@@ -66,6 +99,18 @@ const companionProducts = [
     trainingNotes: "Ask about missed calls, voicemail, and after-hours cover.",
     bookingProvider: "calcom" as const,
     bookingUrl: "https://cal.com",
+    qualificationCriteria: [
+      {
+        label: "Receives inbound customer phone calls",
+        guidance: "Needs call volume to benefit.",
+        required: true,
+      },
+      {
+        label: "Missing calls after hours or on weekends",
+        guidance: "Identify the pain point.",
+        required: false,
+      },
+    ],
   },
   {
     name: "Review Management Platform",
@@ -178,6 +223,28 @@ const companionCampaigns = [
       "Redwood Outdoor Living",
       "Sierra Green Care",
       "Coastal Lawn Studio",
+    ],
+  ],
+  [
+    "Pacific Northwest Solar",
+    [0, 4, 1],
+    [
+      "Cascade Solar Power",
+      "Olympic Clean Energy",
+      "Puget Sound SunWorks",
+      "Evergreen Solar Co.",
+      "Rainier Renewable",
+    ],
+  ],
+  [
+    "Austin Web Design",
+    [0, 4],
+    [
+      "Austin Crafted Homes",
+      "Barton Springs Legal",
+      "Zilker Fitness Studio",
+      "South Congress Architecture",
+      "Rainey Hospitality",
     ],
   ],
 ] as const;
@@ -457,9 +524,11 @@ export const seedCallCompanion = mutation({
                 ? "Miami, FL"
                 : campaignIndex === 5
                   ? "Sacramento, CA"
-                  : campaignIndex === 2
-                    ? "Denver, CO"
-                    : "Austin, TX";
+                  : campaignIndex === 6
+                    ? "Seattle, WA"
+                    : campaignIndex === 2
+                      ? "Denver, CO"
+                      : "Austin, TX";
         const callStatuses = [
           "Not Called",
           "Callback",

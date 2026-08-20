@@ -24,33 +24,88 @@ export const workspace = query({
   args: {},
   handler: async (ctx) => {
     const organizationId = await activeOrganization(ctx);
-    const [offers, campaigns, playbooks, leadLists] = await Promise.all([
-      ctx.db
-        .query("offers")
-        .withIndex("by_organization", (q) =>
-          q.eq("organizationId", organizationId),
-        )
-        .collect(),
-      ctx.db
-        .query("campaigns")
-        .withIndex("by_organization", (q) =>
-          q.eq("organizationId", organizationId),
-        )
-        .collect(),
-      ctx.db
-        .query("playbooks")
-        .withIndex("by_organization", (q) =>
-          q.eq("organizationId", organizationId),
-        )
-        .collect(),
-      ctx.db
-        .query("leadLists")
-        .withIndex("by_organization", (q) =>
-          q.eq("organizationId", organizationId),
-        )
-        .collect(),
-    ]);
-    return { offers, campaigns, playbooks, leadLists };
+    const [offers, campaigns, playbooks, leadLists, products, leads] =
+      await Promise.all([
+        ctx.db
+          .query("offers")
+          .withIndex("by_organization", (q) =>
+            q.eq("organizationId", organizationId),
+          )
+          .collect(),
+        ctx.db
+          .query("campaigns")
+          .withIndex("by_organization", (q) =>
+            q.eq("organizationId", organizationId),
+          )
+          .collect(),
+        ctx.db
+          .query("playbooks")
+          .withIndex("by_organization", (q) =>
+            q.eq("organizationId", organizationId),
+          )
+          .collect(),
+        ctx.db
+          .query("leadLists")
+          .withIndex("by_organization", (q) =>
+            q.eq("organizationId", organizationId),
+          )
+          .collect(),
+        ctx.db
+          .query("products")
+          .withIndex("by_organization", (q) =>
+            q.eq("organizationId", organizationId),
+          )
+          .collect(),
+        ctx.db
+          .query("leads")
+          .withIndex("by_organization", (q) =>
+            q.eq("organizationId", organizationId),
+          )
+          .collect(),
+      ]);
+
+    const leadCountByCampaign = new Map<
+      string,
+      { total: number; callable: number }
+    >();
+    for (const lead of leads) {
+      const list = leadLists.find((l) => l._id === lead.leadListId);
+      if (list?.campaignId) {
+        const current = leadCountByCampaign.get(list.campaignId) || {
+          total: 0,
+          callable: 0,
+        };
+        current.total += 1;
+        if (lead.status === "queued" || lead.status === "working") {
+          current.callable += 1;
+        }
+        leadCountByCampaign.set(list.campaignId, current);
+      }
+    }
+
+    const enrichedCampaigns = campaigns.map((campaign) => {
+      const stats = leadCountByCampaign.get(campaign._id) || {
+        total: 0,
+        callable: 0,
+      };
+      const linkedProducts = (campaign.productIds || [])
+        .map((id) => products.find((p) => p._id === id))
+        .filter(Boolean);
+      return {
+        ...campaign,
+        totalLeads: stats.total,
+        callableLeads: stats.callable,
+        products: linkedProducts,
+      };
+    });
+
+    return {
+      offers,
+      campaigns: enrichedCampaigns,
+      playbooks,
+      leadLists,
+      products,
+    };
   },
 });
 
@@ -340,3 +395,51 @@ export const setCampaignLeadLists = mutation({
     });
   },
 });
+
+export const linkProductToCampaign = mutation({
+  args: {
+    campaignId: v.id("campaigns"),
+    productId: v.optional(v.id("products")),
+  },
+  handler: async (ctx, args) => {
+    const organizationId = await activeOrganization(ctx);
+    const campaign = await ctx.db.get(args.campaignId);
+    if (!campaign || campaign.organizationId !== organizationId)
+      throw new Error("That campaign is not available.");
+    if (args.productId) {
+      const product = await ctx.db.get(args.productId);
+      if (!product || product.organizationId !== organizationId)
+        throw new Error("That product is not available.");
+    }
+    await ctx.db.patch(campaign._id, {
+      productIds: args.productId ? [args.productId] : [],
+      updatedAt: Date.now(),
+    });
+  },
+});
+
+export const toggleProductInCampaign = mutation({
+  args: {
+    campaignId: v.id("campaigns"),
+    productId: v.id("products"),
+  },
+  handler: async (ctx, args) => {
+    const organizationId = await activeOrganization(ctx);
+    const campaign = await ctx.db.get(args.campaignId);
+    if (!campaign || campaign.organizationId !== organizationId)
+      throw new Error("That campaign is not available.");
+    const product = await ctx.db.get(args.productId);
+    if (!product || product.organizationId !== organizationId)
+      throw new Error("That product is not available.");
+    const current = campaign.productIds ?? [];
+    const already = current.includes(args.productId);
+    const next = already
+      ? current.filter((id) => id !== args.productId)
+      : [...current, args.productId];
+    await ctx.db.patch(campaign._id, {
+      productIds: next,
+      updatedAt: Date.now(),
+    });
+  },
+});
+

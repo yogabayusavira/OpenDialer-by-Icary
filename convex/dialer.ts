@@ -94,12 +94,16 @@ export const workspace = query({
         ...lead,
         listName: listNameById.get(lead.leadListId) || "Lead list",
       }));
+    const activeProduct = activeCampaign?.productIds?.[0]
+      ? await ctx.db.get(activeCampaign.productIds[0])
+      : null;
     const activeOffer = activeCampaign?.offerId
       ? await ctx.db.get(activeCampaign.offerId)
       : null;
     return {
       campaigns: campaignSummaries,
       activeCampaign,
+      activeProduct,
       activeOffer,
       activeLeadList: lists[0] || null,
       leads,

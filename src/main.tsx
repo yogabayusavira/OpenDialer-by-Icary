@@ -1,6 +1,4 @@
 import {
-  Activity as ActivityIcon,
-  Fragment,
   useEffect,
   useRef,
   useState,
@@ -11,6 +9,7 @@ import { createRoot } from "react-dom/client";
 import { ConvexAuthProvider } from "@convex-dev/auth/react";
 import { ConvexReactClient, useMutation, useQuery } from "convex/react";
 import {
+  Activity as ActivityIcon,
   BarChart3,
   Bell,
   BookOpen,
@@ -19,6 +18,8 @@ import {
   CheckCircle2,
   ChevronDown,
   ChevronLeft,
+  ChevronRight,
+  Bookmark,
   CircleHelp,
   Clock3,
   FileText,
@@ -122,6 +123,7 @@ function App({ initialSipProfile }: { initialSipProfile?: SipProfile }) {
   const organizationMembers = useQuery(api.organizationData.members) || [];
   const organizationActivity = useQuery(api.organizationData.activity) || [];
   const acquaintances = useQuery(api.organizationData.acquaintances) || [];
+  const allLeads = useQuery(api.leadLists.listAllLeads) || [];
   const updateProfile = useMutation(api.organizations.updateProfile);
   const importLeadCsv = useMutation(api.leadLists.importCsv);
   const createOffer = useMutation(api.campaigns.createOffer);
@@ -150,6 +152,8 @@ function App({ initialSipProfile }: { initialSipProfile?: SipProfile }) {
   const deleteCampaignPlaybook = useMutation(
     api.campaigns.deleteCampaignPlaybook,
   );
+  const linkProductToCampaign = useMutation(api.campaigns.linkProductToCampaign);
+  const toggleProductInCampaign = useMutation(api.campaigns.toggleProductInCampaign);
   const addToMyCampaigns = useMutation(api.dialer.addToMyCampaigns);
   const removeFromMyCampaigns = useMutation(api.dialer.removeFromMyCampaigns);
   const renameLeadList = useMutation(api.leadLists.rename);
@@ -172,7 +176,6 @@ function App({ initialSipProfile }: { initialSipProfile?: SipProfile }) {
   const [addedToList, setAddedToList] = useState(false);
   const [selectedLead, setSelectedLead] = useState(0);
   const [activeNav, setActiveNav] = useState("Dial");
-  const [campaignsExpanded, setCampaignsExpanded] = useState(true);
   const [organizationOpen, setOrganizationOpen] = useState(false);
   const [linePickerOpen, setLinePickerOpen] = useState(false);
   const [selectedLineId, setSelectedLineId] = useState(callingLines[0].id);
@@ -229,15 +232,11 @@ function App({ initialSipProfile }: { initialSipProfile?: SipProfile }) {
     leadListIds: [] as string[],
   });
   const [campaignSearch, setCampaignSearch] = useState("");
+  const [campaignPage, setCampaignPage] = useState(1);
   const [createCampaignOpen, setCreateCampaignOpen] = useState(false);
   const [newCampaignSetup, setNewCampaignSetup] = useState({
     name: "",
-    offerName: "",
-    description: "",
-    tags: "",
-    bookingProvider: "",
-    bookingUrl: "",
-    qualificationCriteria: "",
+    productId: "",
     playbookName: "",
     playbookBody: "",
   });
@@ -246,6 +245,7 @@ function App({ initialSipProfile }: { initialSipProfile?: SipProfile }) {
   const [productDraft, setProductDraft] = useState({
     name: "",
     description: "",
+    tags: "",
     whoWeAre: "",
     whoWeHelp: "",
     elevatorPitch: "",
@@ -254,6 +254,7 @@ function App({ initialSipProfile }: { initialSipProfile?: SipProfile }) {
     trainingNotes: "",
     bookingProvider: "calcom",
     bookingUrl: "https://cal.com",
+    qualificationCriteria: [] as { label: string; guidance?: string; required: boolean }[],
   });
   const [editingProductId, setEditingProductId] =
     useState<Id<"products"> | null>(null);
@@ -274,21 +275,12 @@ function App({ initialSipProfile }: { initialSipProfile?: SipProfile }) {
   const [pendingQueueLeadId, setPendingQueueLeadId] =
     useState<Id<"leads"> | null>(null);
   const [campaignSection, setCampaignSection] = useState<
-    "Overview" | "Offer" | "Lead lists" | "Playbook"
+    "Overview" | "Product" | "Leads" | "Playbook"
   >("Overview");
   const campaignDetail = useQuery(
     api.campaigns.campaignDetail,
     selectedCampaignId ? { campaignId: selectedCampaignId } : "skip",
   );
-  const [campaignOfferDraft, setCampaignOfferDraft] = useState({
-    name: "",
-    description: "",
-    tags: [] as string[],
-    idealCustomer: "",
-    bookingProvider: "",
-    bookingUrl: "",
-    qualificationCriteria: [{ label: "", guidance: "", required: true }],
-  });
   const [campaignPlaybookDraft, setCampaignPlaybookDraft] = useState({
     name: "",
     body: "",
@@ -353,8 +345,14 @@ function App({ initialSipProfile }: { initialSipProfile?: SipProfile }) {
     role: "No campaign queue yet",
     phone: "",
   };
+  const activeSellingEntity =
+    dialerWorkspace?.activeProduct || dialerWorkspace?.activeOffer || null;
   const bookingCriteria =
-    dialerWorkspace?.activeOffer?.qualificationCriteria || [];
+    activeSellingEntity?.qualificationCriteria || [];
+  const bookingProvider =
+    activeSellingEntity?.bookingProvider || "calcom";
+  const bookingUrl =
+    activeSellingEntity?.bookingUrl || "";
   const profileName = account?.profile.displayName || "Jamie Morgan";
   const profileTitle = account?.profile.title || "Sales representative";
   const profileImage = account?.profile.image || null;
@@ -395,6 +393,7 @@ function App({ initialSipProfile }: { initialSipProfile?: SipProfile }) {
       setProductDraft({
         name: product.name,
         description: product.description,
+        tags: (product.tags || []).join(", "),
         whoWeAre: product.whoWeAre || "",
         whoWeHelp: product.whoWeHelp || "",
         elevatorPitch: product.elevatorPitch || "",
@@ -403,12 +402,20 @@ function App({ initialSipProfile }: { initialSipProfile?: SipProfile }) {
         trainingNotes: product.trainingNotes || "",
         bookingProvider: product.bookingProvider || "calcom",
         bookingUrl: product.bookingUrl || "",
+        qualificationCriteria: product.qualificationCriteria?.length
+          ? product.qualificationCriteria.map((c) => ({
+              label: c.label,
+              guidance: c.guidance || "",
+              required: c.required,
+            }))
+          : [{ label: "", guidance: "", required: true }],
       });
     } else {
       setEditingProductId(null);
       setProductDraft({
         name: "",
         description: "",
+        tags: "",
         whoWeAre: "",
         whoWeHelp: "",
         elevatorPitch: "",
@@ -417,6 +424,7 @@ function App({ initialSipProfile }: { initialSipProfile?: SipProfile }) {
         trainingNotes: "",
         bookingProvider: "calcom",
         bookingUrl: "https://cal.com",
+        qualificationCriteria: [{ label: "", guidance: "", required: true }],
       });
     }
     setProductEditorOpen(true);
@@ -426,8 +434,30 @@ function App({ initialSipProfile }: { initialSipProfile?: SipProfile }) {
     setResourceError("");
     try {
       const data = {
-        ...productDraft,
-        bookingProvider: productDraft.bookingProvider as "calcom" | "calendly",
+        name: productDraft.name,
+        description: productDraft.description,
+        tags: productDraft.tags
+          .split(",")
+          .map((t) => t.trim())
+          .filter(Boolean),
+        whoWeAre: productDraft.whoWeAre,
+        whoWeHelp: productDraft.whoWeHelp,
+        elevatorPitch: productDraft.elevatorPitch,
+        commonObjections: productDraft.commonObjections,
+        faq: productDraft.faq,
+        trainingNotes: productDraft.trainingNotes,
+        bookingProvider: (productDraft.bookingProvider === "calcom" ||
+        productDraft.bookingProvider === "calendly"
+          ? productDraft.bookingProvider
+          : undefined) as "calcom" | "calendly" | undefined,
+        bookingUrl: productDraft.bookingUrl,
+        qualificationCriteria: productDraft.qualificationCriteria
+          .map((c) => ({
+            label: c.label.trim(),
+            guidance: c.guidance?.trim() || undefined,
+            required: c.required,
+          }))
+          .filter((c) => Boolean(c.label)),
       };
       if (editingProductId)
         await updateProduct({ productId: editingProductId, ...data });
@@ -543,7 +573,7 @@ function App({ initialSipProfile }: { initialSipProfile?: SipProfile }) {
         rows: rows.slice(1),
       });
       setCsvCampaignId(campaignId || null);
-      if (campaignId) setCampaignSection("Lead lists");
+      if (campaignId) setCampaignSection("Leads");
       setCsvMapping({
         firstName: "",
         lastName: "",
@@ -659,27 +689,10 @@ function App({ initialSipProfile }: { initialSipProfile?: SipProfile }) {
         name: newCampaignSetup.name,
         leadListIds: [],
       });
-      if (newCampaignSetup.offerName.trim())
-        await saveCampaignOffer({
+      if (newCampaignSetup.productId)
+        await linkProductToCampaign({
           campaignId,
-          name: newCampaignSetup.offerName,
-          description: newCampaignSetup.description,
-          tags: newCampaignSetup.tags
-            .split(",")
-            .map((tag) => tag.trim())
-            .filter(Boolean),
-          idealCustomer: "",
-          bookingProvider:
-            newCampaignSetup.bookingProvider === "calcom" ||
-            newCampaignSetup.bookingProvider === "calendly"
-              ? newCampaignSetup.bookingProvider
-              : undefined,
-          bookingUrl: newCampaignSetup.bookingUrl,
-          qualificationCriteria: newCampaignSetup.qualificationCriteria
-            .split("\n")
-            .map((label) => label.trim())
-            .filter(Boolean)
-            .map((label) => ({ label, required: true })),
+          productId: newCampaignSetup.productId as any,
         });
       if (
         newCampaignSetup.playbookName.trim() &&
@@ -692,12 +705,7 @@ function App({ initialSipProfile }: { initialSipProfile?: SipProfile }) {
         });
       setNewCampaignSetup({
         name: "",
-        offerName: "",
-        description: "",
-        tags: "",
-        bookingProvider: "",
-        bookingUrl: "",
-        qualificationCriteria: "",
+        productId: "",
         playbookName: "",
         playbookBody: "",
       });
@@ -724,20 +732,6 @@ function App({ initialSipProfile }: { initialSipProfile?: SipProfile }) {
   }, [initialSipProfile]);
   useEffect(() => {
     if (!campaignDetail) return;
-    setCampaignOfferDraft({
-      name: campaignDetail.offer?.name || "",
-      description: campaignDetail.offer?.description || "",
-      tags: campaignDetail.offer?.tags || [],
-      idealCustomer: campaignDetail.offer?.idealCustomer || "",
-      bookingProvider: campaignDetail.offer?.bookingProvider || "",
-      bookingUrl: campaignDetail.offer?.bookingUrl || "",
-      qualificationCriteria: campaignDetail.offer?.qualificationCriteria?.length
-        ? campaignDetail.offer.qualificationCriteria.map((item) => ({
-            ...item,
-            guidance: item.guidance || "",
-          }))
-        : [{ label: "", guidance: "", required: true }],
-    });
     setCampaignPlaybookDraft({
       name: campaignDetail.playbook?.name || "",
       body: campaignDetail.playbook?.body || "",
@@ -745,13 +739,12 @@ function App({ initialSipProfile }: { initialSipProfile?: SipProfile }) {
     setCampaignNameDraft(campaignDetail.campaign.name);
   }, [
     campaignDetail?.campaign._id,
-    campaignDetail?.offer?._id,
     campaignDetail?.playbook?._id,
   ]);
   useEffect(() => {
     setBookingChecks(bookingCriteria.map(() => false));
     setBookingCalendarOpen(false);
-  }, [dialerWorkspace?.activeOffer?._id, bookingCriteria.length]);
+  }, [dialerWorkspace?.activeProduct?._id, dialerWorkspace?.activeOffer?._id, bookingCriteria.length]);
   useEffect(() => {
     if (!pendingQueueLeadId || !dialerWorkspace?.activeCampaign) return;
     const index = dialerWorkspace.leads.findIndex(
@@ -839,7 +832,7 @@ function App({ initialSipProfile }: { initialSipProfile?: SipProfile }) {
   };
   const openCampaign = (
     campaignId: Id<"campaigns">,
-    section: "Overview" | "Offer" | "Lead lists" | "Playbook" = "Overview",
+    section: "Overview" | "Product" | "Leads" | "Playbook" = "Overview",
   ) => {
     setSelectedCampaignId(campaignId);
     setSelectedCampaignLeadListId(null);
@@ -867,12 +860,17 @@ function App({ initialSipProfile }: { initialSipProfile?: SipProfile }) {
     campaignId: Id<"campaigns">,
     leadListId: Id<"leadLists"> | null = selectedCampaignLeadListId,
   ) => {
-    if (!leadListId) {
-      setResourceError("Choose a lead list before starting Dial.");
+    const targetLeadListId =
+      leadListId ||
+      selectedCampaignLeadListId ||
+      campaignDetail?.leadLists[0]?._id ||
+      campaignDetail?.leads[0]?.leadListId;
+    if (!targetLeadListId) {
+      setResourceError("Import leads into this campaign before starting Dial.");
       return;
     }
     try {
-      await setActiveCampaign({ campaignId, leadListId });
+      await setActiveCampaign({ campaignId, leadListId: targetLeadListId });
       setSelectedLead(0);
       setActiveNav("Dial");
     } catch (error) {
@@ -883,33 +881,7 @@ function App({ initialSipProfile }: { initialSipProfile?: SipProfile }) {
       );
     }
   };
-  const saveOfferForCampaign = async (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    if (!selectedCampaignId) return;
-    setResourceError("");
-    try {
-      await saveCampaignOffer({
-        campaignId: selectedCampaignId,
-        name: campaignOfferDraft.name,
-        description: campaignOfferDraft.description,
-        tags: campaignOfferDraft.tags,
-        idealCustomer: campaignOfferDraft.idealCustomer,
-        bookingProvider:
-          campaignOfferDraft.bookingProvider === "calcom" ||
-          campaignOfferDraft.bookingProvider === "calendly"
-            ? campaignOfferDraft.bookingProvider
-            : undefined,
-        bookingUrl: campaignOfferDraft.bookingUrl,
-        qualificationCriteria: campaignOfferDraft.qualificationCriteria,
-      });
-    } catch (error) {
-      setResourceError(
-        error instanceof Error
-          ? error.message
-          : "Icary could not save this offer.",
-      );
-    }
-  };
+
   const savePlaybookForCampaign = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     if (!selectedCampaignId) return;
@@ -963,22 +935,7 @@ function App({ initialSipProfile }: { initialSipProfile?: SipProfile }) {
       );
     }
   };
-  const removeOffer = async () => {
-    if (
-      !selectedCampaignId ||
-      !window.confirm("Delete this offer and its booking criteria?")
-    )
-      return;
-    try {
-      await deleteCampaignOffer({ campaignId: selectedCampaignId });
-    } catch (error) {
-      setResourceError(
-        error instanceof Error
-          ? error.message
-          : "Icary could not delete this offer.",
-      );
-    }
-  };
+
   const removePlaybook = async () => {
     if (!selectedCampaignId || !window.confirm("Delete this playbook?")) return;
     try {
@@ -1195,13 +1152,15 @@ function App({ initialSipProfile }: { initialSipProfile?: SipProfile }) {
               <small>soon</small>
             </button>
             <button
-              className={`nav-item ${activeNav === "Members" ? "active" : ""}`}
-              onClick={() => setActiveNav("Members")}
+              className="nav-item coming-nav"
+              disabled
+              title="Coming soon"
             >
               <Icon>
                 <UserRound size={18} />
               </Icon>
               <span>Members</span>
+              <small>soon</small>
             </button>
             <button
               className={`nav-item ${activeNav === "Products" ? "active" : ""}`}
@@ -1216,75 +1175,16 @@ function App({ initialSipProfile }: { initialSipProfile?: SipProfile }) {
               <span>Products</span>
             </button>
             <button
-              className={`nav-item nav-parent ${activeNav === "Campaigns" ? "active" : ""}`}
+              className={`nav-item ${activeNav === "Campaigns" ? "active" : ""}`}
               onClick={() => {
                 setActiveNav("Campaigns");
-                setCampaignsExpanded(true);
               }}
-              aria-expanded={campaignsExpanded}
             >
               <Icon>
                 <BookOpen size={18} />
               </Icon>
               <span>Campaigns</span>
-              <ChevronDown
-                size={15}
-                className={campaignsExpanded ? "rotated" : ""}
-              />
             </button>
-            {campaignsExpanded && (
-              <div className="nav-children campaign-nav-children">
-                {campaignWorkspace?.campaigns.map((campaign) => (
-                  <Fragment key={campaign._id}>
-                    <button
-                      key={campaign._id}
-                      className={`nav-item nav-child ${selectedCampaignId === campaign._id && activeNav === "Campaigns" ? "selected" : ""}`}
-                      onClick={() => openCampaign(campaign._id)}
-                      aria-current={
-                        selectedCampaignId === campaign._id &&
-                        activeNav === "Campaigns"
-                          ? "page"
-                          : undefined
-                      }
-                    >
-                      <Icon>
-                        <BookOpen size={15} />
-                      </Icon>
-                      <span>{campaign.name}</span>
-                    </button>
-                    {selectedCampaignId === campaign._id &&
-                      campaignDetail?.leadLists.map((list) => (
-                        <button
-                          key={list._id}
-                          className={`nav-item nav-child nav-list-child ${selectedCampaignLeadListId === list._id ? "selected" : ""}`}
-                          onClick={() => {
-                            setSelectedCampaignLeadListId(list._id);
-                            setCampaignSection("Overview");
-                            setActiveNav("Campaigns");
-                          }}
-                        >
-                          <Icon>
-                            <LayoutList size={14} />
-                          </Icon>
-                          <span>{list.name}</span>
-                        </button>
-                      ))}
-                  </Fragment>
-                ))}
-                <button
-                  className="nav-item nav-child add-campaign-nav"
-                  onClick={() => {
-                    setSelectedCampaignId(null);
-                    setActiveNav("Campaigns");
-                  }}
-                >
-                  <Icon>
-                    <Plus size={15} />
-                  </Icon>
-                  <span>Add campaign</span>
-                </button>
-              </div>
-            )}
             <button
               className="nav-item coming-nav"
               disabled
@@ -1754,37 +1654,51 @@ function App({ initialSipProfile }: { initialSipProfile?: SipProfile }) {
               </button>
             </header>
             {products.length ? (
-              <div className="campaign-index product-index">
+              <div className="campaign-index">
                 {products.map((product) => (
                   <article className="campaign-card" key={product._id}>
-                    <div className="campaign-card-header">
-                      <div>
-                        <h2>{product.name}</h2>
-                        <p>{product.description || "No description yet."}</p>
+                    <button
+                      type="button"
+                      className="campaign-card-main"
+                      onClick={() => openProductEditor(product)}
+                    >
+                      <div className="campaign-card-header">
+                        <div className="campaign-card-title-group">
+                          <strong>{product.name}</strong>
+                          <span className="campaign-card-subtitle">
+                            {product.whoWeHelp ? `Target: ${product.whoWeHelp}` : "Product"}
+                          </span>
+                        </div>
                       </div>
-                      <Package size={19} />
-                    </div>
-                    <div className="campaign-tags">
-                      {product.whoWeHelp && <span>{product.whoWeHelp}</span>}
-                      {product.bookingProvider && (
-                        <span>
-                          {product.bookingProvider === "calcom"
-                            ? "Cal.com"
-                            : "Calendly"}
-                        </span>
+                      <p className="product-description-snippet">
+                        {product.description ||
+                          product.elevatorPitch ||
+                          "No description provided."}
+                      </p>
+                      {product.tags && product.tags.length > 0 && (
+                        <div className="campaign-card-products">
+                          {product.tags.map((tag: string) => (
+                            <span key={tag} className="campaign-product-pill">
+                              {tag}
+                            </span>
+                          ))}
+                        </div>
                       )}
-                    </div>
-                    <div className="campaign-card-footer">
+                    </button>
+                    <footer>
                       <button
-                        className="secondary-button"
+                        type="button"
+                        className="text-button card-open-action"
                         onClick={() => openProductEditor(product)}
                       >
-                        Edit product
+                        Edit product <ChevronRight size={14} />
                       </button>
                       <button
+                        type="button"
                         className="icon-button destructive-button"
                         aria-label={`Delete ${product.name}`}
-                        onClick={() => {
+                        onClick={(e) => {
+                          e.stopPropagation();
                           if (
                             window.confirm(
                               `Delete ${product.name}? It will be unlinked from all campaigns.`,
@@ -1793,15 +1707,15 @@ function App({ initialSipProfile }: { initialSipProfile?: SipProfile }) {
                             void removeProduct({ productId: product._id });
                         }}
                       >
-                        <Trash2 size={16} />
+                        <Trash2 size={15} />
                       </button>
-                    </div>
+                    </footer>
                   </article>
                 ))}
               </div>
             ) : (
               <div className="portfolio-empty">
-                <Package size={25} />
+                <Package size={32} />
                 <strong>No products yet</strong>
                 <span>
                   Start with what your organization sells. Campaigns can then
@@ -1811,7 +1725,7 @@ function App({ initialSipProfile }: { initialSipProfile?: SipProfile }) {
                   className="primary-button"
                   onClick={() => openProductEditor()}
                 >
-                  Add product
+                  <Plus size={16} /> Add product
                 </button>
               </div>
             )}
@@ -2079,99 +1993,166 @@ function App({ initialSipProfile }: { initialSipProfile?: SipProfile }) {
                   <Search size={16} />
                   <input
                     value={campaignSearch}
-                    onChange={(event) => setCampaignSearch(event.target.value)}
+                    onChange={(event) => {
+                      setCampaignSearch(event.target.value);
+                      setCampaignPage(1);
+                    }}
                     placeholder="Search campaigns"
                   />
                 </label>
-                <div className="campaign-index">
-                  {campaignWorkspace?.campaigns
-                    .filter(
-                      (campaign) =>
-                        campaign.name
-                          .toLowerCase()
-                          .includes(campaignSearch.trim().toLowerCase()) ||
-                        campaignWorkspace.offers
-                          .find((offer) => offer._id === campaign.offerId)
-                          ?.tags?.some((tag) =>
-                            tag
-                              .toLowerCase()
-                              .includes(campaignSearch.trim().toLowerCase()),
-                          ),
-                    )
-                    .map((campaign) => {
-                      const offer = campaignWorkspace.offers.find(
-                        (item) => item._id === campaign.offerId,
-                      );
-                      const isActive =
-                        dialerWorkspace?.activeCampaign?._id === campaign._id;
-                      const isSaved = myCampaigns.some(
-                        (item) => item._id === campaign._id,
-                      );
-                      return (
-                        <article
-                          className={`campaign-card ${isActive ? "active-campaign-card" : ""}`}
-                          key={campaign._id}
-                        >
+                {(() => {
+                  const CAMPAIGNS_PER_PAGE = 6;
+                  const filtered = (campaignWorkspace?.campaigns || []).filter(
+                    (campaign) =>
+                      campaign.name
+                        .toLowerCase()
+                        .includes(campaignSearch.trim().toLowerCase()) ||
+                      campaignWorkspace?.offers
+                        .find((offer) => offer._id === campaign.offerId)
+                        ?.tags?.some((tag) =>
+                          tag
+                            .toLowerCase()
+                            .includes(campaignSearch.trim().toLowerCase()),
+                        ),
+                  );
+                  const totalPages = Math.max(
+                    1,
+                    Math.ceil(filtered.length / CAMPAIGNS_PER_PAGE),
+                  );
+                  const currentPage = Math.min(campaignPage, totalPages);
+                  const paginated = filtered.slice(
+                    (currentPage - 1) * CAMPAIGNS_PER_PAGE,
+                    currentPage * CAMPAIGNS_PER_PAGE,
+                  );
+                  return (
+                    <>
+                      <div className="campaign-index">
+                        {paginated.map((campaign) => {
+                          const offer = campaignWorkspace?.offers.find(
+                            (item) => item._id === campaign.offerId,
+                          );
+                          const isActive =
+                            dialerWorkspace?.activeCampaign?._id === campaign._id;
+                          const isSaved = myCampaigns.some(
+                            (item) => item._id === campaign._id,
+                          );
+                          const displayProducts =
+                            (campaign as any).products && (campaign as any).products.length > 0
+                              ? (campaign as any).products
+                              : null;
+                          const tags = displayProducts
+                            ? displayProducts.map((p: any) => p.name)
+                            : [];
+                          return (
+                            <article
+                              className="campaign-card"
+                              key={campaign._id}
+                            >
+                              <button
+                                type="button"
+                                className="campaign-card-main"
+                                onClick={() => openCampaign(campaign._id)}
+                              >
+                                <div className="campaign-card-header">
+                                  <div className="campaign-card-title-group">
+                                    <strong>{campaign.name}</strong>
+                                    <span className="campaign-card-subtitle">
+                                      {campaign.status === "active"
+                                        ? "Ready to dial"
+                                        : "Draft"}
+                                    </span>
+                                  </div>
+                                </div>
+                                {tags.length > 0 && (
+                                  <div className="campaign-card-products">
+                                    {tags.slice(0, 3).map((tag: string) => (
+                                      <span className="campaign-product-pill" key={tag}>
+                                        {tag}
+                                      </span>
+                                    ))}
+                                    {tags.length > 3 && (
+                                      <span className="campaign-product-more">
+                                        +{tags.length - 3}
+                                      </span>
+                                    )}
+                                  </div>
+                                )}
+                                <div className="campaign-card-metrics">
+                                  <div className="card-metric">
+                                    <span className="metric-value">{(campaign as any).totalLeads ?? 0}</span>
+                                    <span className="metric-label">leads</span>
+                                  </div>
+                                  <div className="card-metric">
+                                    <span className="metric-value">{(campaign as any).callableLeads ?? 0}</span>
+                                    <span className="metric-label">callable</span>
+                                  </div>
+                                </div>
+                              </button>
+                              <footer>
+                                <button
+                                  type="button"
+                                  className="text-button card-open-action"
+                                  onClick={() => openCampaign(campaign._id)}
+                                >
+                                  Open workspace <ChevronRight size={14} />
+                                </button>
+                                <button
+                                  type="button"
+                                  className={`save-campaign-button ${isSaved ? "saved" : ""}`}
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    if (!isSaved) {
+                                      void addToMyCampaigns({ campaignId: campaign._id });
+                                    } else {
+                                      void removeFromMyCampaigns({ campaignId: campaign._id });
+                                    }
+                                  }}
+                                >
+                                  <Bookmark size={13} fill={isSaved ? "#111" : "none"} />
+                                  <span>{isSaved ? "Saved" : "Save"}</span>
+                                </button>
+                              </footer>
+                            </article>
+                          );
+                        })}
+                      </div>
+                      {totalPages > 1 && (
+                        <div className="pagination-bar" role="navigation" aria-label="Campaign pagination">
                           <button
-                            className="campaign-card-main"
-                            onClick={() => openCampaign(campaign._id)}
+                            type="button"
+                            className="secondary-button"
+                            disabled={currentPage <= 1}
+                            onClick={() => setCampaignPage((p) => Math.max(1, p - 1))}
                           >
-                            <span className="campaign-card-title">
-                              <strong>{campaign.name}</strong>
-                              <small>
-                                {campaign.status === "active"
-                                  ? "Active campaign"
-                                  : "Ready to set up"}
-                              </small>
-                            </span>
-                            {offer?.tags?.length ? (
-                              <span className="offer-tags">
-                                {offer.tags.map((tag) => (
-                                  <i className="offer-tag" key={tag}>
-                                    {tag}
-                                  </i>
-                                ))}
-                              </span>
-                            ) : (
-                              offer?.name && (
-                                <span className="offer-tag">{offer.name}</span>
-                              )
-                            )}
-                            <span className="campaign-card-stats">
-                              <b>
-                                <i>{(campaign.leadListIds || []).length}</i>{" "}
-                                Lead lists
-                              </b>
-                              <b>
-                                <i>{isActive ? "Current" : "Open"}</i> Workspace
-                              </b>
-                            </span>
+                            Previous
                           </button>
-                          <footer>
-                            <button
-                              className="text-button"
-                              onClick={() => openCampaign(campaign._id)}
-                            >
-                              Open workspace <ChevronDown size={15} />
-                            </button>
-                            <button
-                              className="secondary-button"
-                              disabled={isSaved}
-                              onClick={() =>
-                                void addToMyCampaigns({
-                                  campaignId: campaign._id,
-                                })
-                              }
-                            >
-                              {isSaved
-                                ? "In My campaigns"
-                                : "Add to My campaigns"}
-                            </button>
-                          </footer>
-                        </article>
-                      );
-                    })}
-                </div>
+                          <div className="pagination-pages">
+                            {Array.from({ length: totalPages }, (_, i) => i + 1).map(
+                              (pageNum) => (
+                                <button
+                                  key={pageNum}
+                                  type="button"
+                                  className={`pagination-page-button ${pageNum === currentPage ? "active" : ""}`}
+                                  onClick={() => setCampaignPage(pageNum)}
+                                >
+                                  {pageNum}
+                                </button>
+                              ),
+                            )}
+                          </div>
+                          <button
+                            type="button"
+                            className="secondary-button"
+                            disabled={currentPage >= totalPages}
+                            onClick={() => setCampaignPage((p) => Math.min(totalPages, p + 1))}
+                          >
+                            Next
+                          </button>
+                        </div>
+                      )}
+                    </>
+                  );
+                })()}
                 {createCampaignOpen && (
                   <div className="campaign-modal-backdrop" role="presentation">
                     <form
@@ -2211,92 +2192,25 @@ function App({ initialSipProfile }: { initialSipProfile?: SipProfile }) {
                         />
                       </label>
                       <div className="modal-section">
-                        <h3>Offer</h3>
+                        <h3>Product</h3>
                         <label>
-                          Offer name
-                          <input
-                            value={newCampaignSetup.offerName}
+                          Link a product
+                          <select
+                            value={newCampaignSetup.productId}
                             onChange={(event) =>
                               setNewCampaignSetup((current) => ({
                                 ...current,
-                                offerName: event.target.value,
+                                productId: event.target.value,
                               }))
                             }
-                            placeholder="Website design"
-                          />
-                        </label>
-                        <label>
-                          Tags
-                          <input
-                            value={newCampaignSetup.tags}
-                            onChange={(event) =>
-                              setNewCampaignSetup((current) => ({
-                                ...current,
-                                tags: event.target.value,
-                              }))
-                            }
-                            placeholder="Website design, SEO"
-                          />
-                        </label>
-                        <label>
-                          What it solves
-                          <textarea
-                            value={newCampaignSetup.description}
-                            onChange={(event) =>
-                              setNewCampaignSetup((current) => ({
-                                ...current,
-                                description: event.target.value,
-                              }))
-                            }
-                            placeholder="The concise value proposition for the rep."
-                          />
-                        </label>
-                        <div className="booking-fields">
-                          <label>
-                            Booking provider
-                            <select
-                              value={newCampaignSetup.bookingProvider}
-                              onChange={(event) =>
-                                setNewCampaignSetup((current) => ({
-                                  ...current,
-                                  bookingProvider: event.target.value,
-                                }))
-                              }
-                            >
-                              <option value="">Choose later</option>
-                              <option value="calcom">Cal.com</option>
-                              <option value="calendly">Calendly</option>
-                            </select>
-                          </label>
-                          <label>
-                            Booking link
-                            <input
-                              type="url"
-                              value={newCampaignSetup.bookingUrl}
-                              onChange={(event) =>
-                                setNewCampaignSetup((current) => ({
-                                  ...current,
-                                  bookingUrl: event.target.value,
-                                }))
-                              }
-                              placeholder="https://cal.com/..."
-                            />
-                          </label>
-                        </div>
-                        <label>
-                          Qualified lead checklist
-                          <textarea
-                            value={newCampaignSetup.qualificationCriteria}
-                            onChange={(event) =>
-                              setNewCampaignSetup((current) => ({
-                                ...current,
-                                qualificationCriteria: event.target.value,
-                              }))
-                            }
-                            placeholder={
-                              "Decision maker\nBudget confirmed\nMeeting need identified"
-                            }
-                          />
+                          >
+                            <option value="">None — link one later</option>
+                            {products.map((p) => (
+                              <option key={p._id} value={p._id}>
+                                {p.name}
+                              </option>
+                            ))}
+                          </select>
                         </label>
                       </div>
                       <div className="modal-section">
@@ -2405,10 +2319,10 @@ function App({ initialSipProfile }: { initialSipProfile?: SipProfile }) {
                           <Trash2 size={14} /> Delete
                         </button>
                         <button
-                          className="primary-button"
-                          onClick={() => setCampaignSection("Lead lists")}
+                          className="secondary-button"
+                          onClick={() => setCampaignSection("Leads")}
                         >
-                          <LayoutList size={15} /> Choose list
+                          <LayoutList size={15} /> All leads
                         </button>
                       </div>
                     </header>
@@ -2417,7 +2331,7 @@ function App({ initialSipProfile }: { initialSipProfile?: SipProfile }) {
                       aria-label="Campaign sections"
                     >
                       {(
-                        ["Overview", "Offer", "Lead lists", "Playbook"] as const
+                        ["Overview", "Product", "Leads", "Playbook"] as const
                       ).map((section) => (
                         <button
                           key={section}
@@ -2431,67 +2345,13 @@ function App({ initialSipProfile }: { initialSipProfile?: SipProfile }) {
                       ))}
                     </nav>
                     {campaignSection === "Overview" && (
-                      <>
-                        <section
-                          className="campaign-list-picker"
-                          aria-label="Choose a lead list"
-                        >
-                          <div>
-                            <h2>Choose a lead list</h2>
-                            <p>
-                              Dial one list at a time. Each list stays private
-                              to this campaign.
-                            </p>
-                          </div>
-                          <div className="campaign-list-options">
-                            {campaignDetail.leadLists.length ? (
-                              campaignDetail.leadLists.map((list) => (
-                                <button
-                                  key={list._id}
-                                  className={
-                                    selectedCampaignLeadListId === list._id
-                                      ? "selected"
-                                      : ""
-                                  }
-                                  onClick={() =>
-                                    setSelectedCampaignLeadListId(list._id)
-                                  }
-                                >
-                                  <span>
-                                    <strong>{list.name}</strong>
-                                    <small>
-                                      {list.queuedCount} callable of{" "}
-                                      {list.leadCount} leads
-                                    </small>
-                                  </span>
-                                  {selectedCampaignLeadListId === list._id && (
-                                    <CheckCircle2 size={16} />
-                                  )}
-                                </button>
-                              ))
-                            ) : (
-                              <button
-                                className="empty-list-choice"
-                                onClick={() => setCampaignSection("Lead lists")}
-                              >
-                                <span>
-                                  <strong>No lead lists yet</strong>
-                                  <small>
-                                    Import a CSV to create your first list.
-                                  </small>
-                                </span>
-                                <Plus size={16} />
-                              </button>
-                            )}
-                          </div>
-                        </section>
-                        <section className="campaign-workspace">
+                      <section className="campaign-workspace">
                           <header className="campaign-workspace-header">
                             <div>
                               <h2>Leads</h2>
                               <p>
-                                {campaignDetail.leads.length} imported · select
-                                a lead to open it in Dial
+                                {campaignDetail.leads.length} leads in this
+                                campaign · select a lead to open it in Dial
                               </p>
                             </div>
                             <div>
@@ -2510,21 +2370,12 @@ function App({ initialSipProfile }: { initialSipProfile?: SipProfile }) {
                                 Import leads <Plus size={15} />
                               </label>
                               <button
-                                className="secondary-button"
-                                onClick={() => setCampaignSection("Lead lists")}
-                              >
-                                Manage lists
-                              </button>
-                              <button
                                 className="primary-button"
                                 disabled={
-                                  !selectedCampaignLeadListId ||
                                   !campaignDetail.leads.some(
                                     (lead) =>
-                                      lead.leadListId ===
-                                        selectedCampaignLeadListId &&
-                                      (lead.status === "queued" ||
-                                        lead.status === "working"),
+                                      lead.status === "queued" ||
+                                      lead.status === "working",
                                   )
                                 }
                                 onClick={() =>
@@ -2654,242 +2505,102 @@ function App({ initialSipProfile }: { initialSipProfile?: SipProfile }) {
                             </div>
                           )}
                         </section>
-                      </>
                     )}
-                    {campaignSection === "Offer" && (
-                      <form
-                        className="campaign-form-detail"
-                        onSubmit={saveOfferForCampaign}
-                      >
-                        <label>
-                          Offer name
-                          <input
-                            required
-                            value={campaignOfferDraft.name}
-                            onChange={(event) =>
-                              setCampaignOfferDraft((current) => ({
-                                ...current,
-                                name: event.target.value,
-                              }))
-                            }
-                            placeholder="e.g. SMB website package"
-                          />
-                        </label>
-                        <label>
-                          What it solves
-                          <textarea
-                            value={campaignOfferDraft.description}
-                            onChange={(event) =>
-                              setCampaignOfferDraft((current) => ({
-                                ...current,
-                                description: event.target.value,
-                              }))
-                            }
-                            placeholder="The concise promise the rep is calling about."
-                          />
-                        </label>
-                        <label>
-                          Tags
-                          <input
-                            value={campaignOfferDraft.tags.join(", ")}
-                            onChange={(event) =>
-                              setCampaignOfferDraft((current) => ({
-                                ...current,
-                                tags: event.target.value
-                                  .split(",")
-                                  .map((tag) => tag.trim())
-                                  .filter(Boolean),
-                              }))
-                            }
-                            placeholder="Website design, SEO, AI receptionist"
-                          />
-                        </label>
-                        <label>
-                          Ideal customer
-                          <textarea
-                            value={campaignOfferDraft.idealCustomer}
-                            onChange={(event) =>
-                              setCampaignOfferDraft((current) => ({
-                                ...current,
-                                idealCustomer: event.target.value,
-                              }))
-                            }
-                            placeholder="Who this offer is for."
-                          />
-                        </label>
-                        <div className="booking-fields">
-                          <label>
-                            Booking provider
-                            <select
-                              value={campaignOfferDraft.bookingProvider}
-                              onChange={(event) =>
-                                setCampaignOfferDraft((current) => ({
-                                  ...current,
-                                  bookingProvider: event.target.value,
-                                }))
-                              }
-                            >
-                              <option value="">Choose later</option>
-                              <option value="calcom">Cal.com</option>
-                              <option value="calendly">Calendly</option>
-                            </select>
-                          </label>
-                          <label>
-                            Booking link
-                            <input
-                              type="url"
-                              value={campaignOfferDraft.bookingUrl}
-                              onChange={(event) =>
-                                setCampaignOfferDraft((current) => ({
-                                  ...current,
-                                  bookingUrl: event.target.value,
-                                }))
-                              }
-                              placeholder="https://cal.com/your-team/meeting"
-                            />
-                          </label>
-                        </div>
-                        <div className="criteria-editor">
-                          <div>
-                            <h2>Qualified lead checklist</h2>
-                            <p>
-                              These appear before the calendar in a live call.
-                            </p>
+                    {campaignSection === "Product" && (() => {
+                      const linkedProductIds = new Set(
+                        campaignDetail.products
+                          .filter((p) => p != null)
+                          .map((p) => p!._id),
+                      );
+                      return (
+                        <section className="campaign-form-detail campaign-product-tab">
+                          <div className="campaign-product-header">
+                            <div>
+                              <h2>Products</h2>
+                              <p>Select all products being sold in this campaign.</p>
+                            </div>
                           </div>
-                          {campaignOfferDraft.qualificationCriteria.map(
-                            (criterion, index) => (
-                              <div className="criterion-row" key={index}>
-                                <input
-                                  value={criterion.label}
-                                  onChange={(event) =>
-                                    setCampaignOfferDraft((current) => ({
-                                      ...current,
-                                      qualificationCriteria:
-                                        current.qualificationCriteria.map(
-                                          (item, itemIndex) =>
-                                            itemIndex === index
-                                              ? {
-                                                  ...item,
-                                                  label: event.target.value,
-                                                }
-                                              : item,
-                                        ),
-                                    }))
-                                  }
-                                  placeholder="Qualification criterion"
-                                />
-                                <input
-                                  value={criterion.guidance || ""}
-                                  onChange={(event) =>
-                                    setCampaignOfferDraft((current) => ({
-                                      ...current,
-                                      qualificationCriteria:
-                                        current.qualificationCriteria.map(
-                                          (item, itemIndex) =>
-                                            itemIndex === index
-                                              ? {
-                                                  ...item,
-                                                  guidance: event.target.value,
-                                                }
-                                              : item,
-                                        ),
-                                    }))
-                                  }
-                                  placeholder="Optional guidance"
-                                />
-                                <label>
-                                  <input
-                                    type="checkbox"
-                                    checked={criterion.required}
-                                    onChange={(event) =>
-                                      setCampaignOfferDraft((current) => ({
-                                        ...current,
-                                        qualificationCriteria:
-                                          current.qualificationCriteria.map(
-                                            (item, itemIndex) =>
-                                              itemIndex === index
-                                                ? {
-                                                    ...item,
-                                                    required:
-                                                      event.target.checked,
-                                                  }
-                                                : item,
-                                          ),
-                                      }))
-                                    }
-                                  />{" "}
-                                  Required
-                                </label>
-                                <button
-                                  type="button"
-                                  onClick={() =>
-                                    setCampaignOfferDraft((current) => ({
-                                      ...current,
-                                      qualificationCriteria:
-                                        current.qualificationCriteria.filter(
-                                          (_, itemIndex) => itemIndex !== index,
-                                        ),
-                                    }))
-                                  }
-                                >
-                                  Remove
-                                </button>
-                              </div>
-                            ),
-                          )}
-                          <button
-                            type="button"
-                            className="secondary-button"
-                            onClick={() =>
-                              setCampaignOfferDraft((current) => ({
-                                ...current,
-                                qualificationCriteria: [
-                                  ...current.qualificationCriteria,
-                                  { label: "", guidance: "", required: true },
-                                ],
-                              }))
-                            }
-                          >
-                            Add criterion
-                          </button>
-                        </div>
-                        <div className="form-actions">
-                          <button className="primary-button">Save offer</button>
-                          {campaignDetail.offer && (
-                            <button
-                              type="button"
-                              className="secondary-button destructive-button"
-                              onClick={() => void removeOffer()}
-                            >
-                              Delete offer
-                            </button>
-                          )}
-                        </div>
-                      </form>
-                    )}
-                    {campaignSection === "Lead lists" && (
-                      <section className="campaign-lists">
-                        <header>
-                          <div>
-                            <h2>Lead lists</h2>
-                            <p>
-                              CSVs imported here belong to this campaign only.
-                            </p>
-                          </div>
-                          <label className="secondary-button csv-import-button">
-                            <input
-                              type="file"
-                              accept=".csv,text/csv"
-                              onChange={(event) => {
-                                void selectCsv(
-                                  event.target.files?.[0],
-                                  campaignDetail.campaign._id,
+                          <div className="campaign-product-checklist">
+                            {products.length ? (
+                              products.map((p) => {
+                                const checked = linkedProductIds.has(p._id);
+                                return (
+                                  <label
+                                    key={p._id}
+                                    className={`campaign-product-check-row ${checked ? "checked" : ""}`}
+                                  >
+                                    <input
+                                      type="checkbox"
+                                      checked={checked}
+                                      onChange={() =>
+                                        void toggleProductInCampaign({
+                                          campaignId: campaignDetail.campaign._id,
+                                          productId: p._id,
+                                        })
+                                      }
+                                    />
+                                    <span className="campaign-product-check-info">
+                                      <strong>{p.name}</strong>
+                                      {p.description && (
+                                        <small>{p.description}</small>
+                                      )}
+                                    </span>
+                                    {checked && (
+                                      <CheckCircle2 size={16} className="check-icon" />
+                                    )}
+                                  </label>
                                 );
-                                event.currentTarget.value = "";
-                              }}
-                            />
-                            Import leads <Plus size={15} />
-                          </label>
+                              })
+                            ) : (
+                              <div className="campaign-workspace-empty">
+                                <Package size={22} />
+                                <strong>No products in catalog</strong>
+                                <span>Add products in the Products page first.</span>
+                              </div>
+                            )}
+                          </div>
+                          {campaignDetail.products.filter(Boolean).length > 0 && (
+                            <div className="campaign-product-summary">
+                              <strong>Selected products:</strong>
+                              <div className="campaign-card-products">
+                                {campaignDetail.products
+                                  .filter((p) => p != null)
+                                  .map((p) => (
+                                    <span key={p!._id} className="campaign-product-pill selected-pill">
+                                      {p!.name}
+                                    </span>
+                                  ))}
+                              </div>
+                            </div>
+                          )}
+                        </section>
+                      );
+                    })()}
+                    {campaignSection === "Leads" && (
+                      <section className="campaign-workspace">
+                        <header className="campaign-workspace-header">
+                          <div>
+                            <h2>Leads</h2>
+                            <p>
+                              {campaignDetail.leads.length} leads combined in this campaign.
+                            </p>
+                          </div>
+                          <div>
+                            <label className="secondary-button csv-import-button">
+                              <input
+                                type="file"
+                                accept=".csv,text/csv"
+                                onChange={(event) => {
+                                  void selectCsv(
+                                    event.target.files?.[0],
+                                    campaignDetail.campaign._id,
+                                  );
+                                  event.currentTarget.value = "";
+                                }}
+                              />
+                              Import leads <Plus size={15} />
+                            </label>
+                          </div>
                         </header>
                         {csvPreview &&
                         csvCampaignId === campaignDetail.campaign._id ? (
@@ -2960,22 +2671,121 @@ function App({ initialSipProfile }: { initialSipProfile?: SipProfile }) {
                               </button>
                             </div>
                           </section>
-                        ) : campaignDetail.leadLists.length ? (
-                          campaignDetail.leadLists.map((list) => (
-                            <div className="campaign-owned-list" key={list._id}>
-                              <span>
-                                <strong>{list.name}</strong>
-                                <small>
-                                  {list.leadCount} leads · This campaign only
-                                </small>
-                              </span>
+                        ) : campaignDetail.leads.length ? (
+                          <div
+                            className="campaign-lead-table"
+                            role="table"
+                            aria-label="Campaign leads"
+                          >
+                            <div className="campaign-lead-head" role="row">
+                              <span />
+                              <span>Lead</span>
+                              <span>Phone</span>
+                              <span>Industry</span>
+                              <span>Location</span>
+                              <span>Rating</span>
+                              <span>Links</span>
+                              <span>Status</span>
                             </div>
-                          ))
+                            {campaignDetail.leads.map((lead) => {
+                              const name =
+                                [lead.firstName, lead.lastName]
+                                  .filter(Boolean)
+                                  .join(" ") ||
+                                lead.company ||
+                                "Unnamed lead";
+                              const leadStatus =
+                                lead.status === "working"
+                                  ? "In call"
+                                  : lead.status === "completed"
+                                    ? "Completed"
+                                    : lead.status === "do_not_call"
+                                      ? "Do not call"
+                                      : "Ready";
+                              return (
+                                <div
+                                  className="campaign-lead-row"
+                                  key={lead._id}
+                                  role="row"
+                                >
+                                  <span role="cell">
+                                    <button
+                                      className="lead-dial-button"
+                                      aria-label={`Open ${name} in Dial`}
+                                      disabled={
+                                        lead.status === "completed" ||
+                                        lead.status === "do_not_call"
+                                      }
+                                      onClick={() =>
+                                        void dialCampaignLead(
+                                          lead._id,
+                                          lead.leadListId,
+                                        )
+                                      }
+                                    >
+                                      <Phone size={14} />
+                                    </button>
+                                  </span>
+                                  <span className="lead-person" role="cell">
+                                    <strong>{name}</strong>
+                                    <small>
+                                      {lead.company ||
+                                        lead.title ||
+                                        "No company added"}
+                                    </small>
+                                  </span>
+                                  <span role="cell">{lead.phone || "—"}</span>
+                                  <span role="cell">
+                                    {lead.industry || "—"}
+                                  </span>
+                                  <span role="cell">
+                                    {lead.location || "—"}
+                                  </span>
+                                  <span role="cell">
+                                    {lead.rating ? `★ ${lead.rating}` : "—"}
+                                  </span>
+                                  <span className="lead-links" role="cell">
+                                    {lead.googleMapsUrl && (
+                                      <a
+                                        href={lead.googleMapsUrl}
+                                        target="_blank"
+                                        rel="noreferrer"
+                                      >
+                                        Maps
+                                      </a>
+                                    )}
+                                    {lead.website && (
+                                      <a
+                                        href={lead.website}
+                                        target="_blank"
+                                        rel="noreferrer"
+                                      >
+                                        Website
+                                      </a>
+                                    )}
+                                    {!lead.googleMapsUrl &&
+                                      !lead.website &&
+                                      "—"}
+                                  </span>
+                                  <span role="cell">
+                                    <b
+                                      className={`lead-status status-${lead.status}`}
+                                    >
+                                      {leadStatus}
+                                    </b>
+                                  </span>
+                                </div>
+                              );
+                            })}
+                          </div>
                         ) : (
-                          <p className="empty-copy">
-                            Import a CSV to create this campaign’s first lead
-                            list.
-                          </p>
+                          <div className="campaign-workspace-empty">
+                            <FileText size={22} />
+                            <strong>No leads attached</strong>
+                            <span>
+                              Import a CSV to add leads directly into this campaign.
+                            </span>
+                          </div>
                         )}
                       </section>
                     )}
@@ -3256,21 +3066,22 @@ function App({ initialSipProfile }: { initialSipProfile?: SipProfile }) {
             )}
           </section>
         ) : activeNav === "Lead lists" ? (
-          <section className="lead-lists-page">
-            <header className="lead-lists-header">
+          <section className="resource-page lead-lists-page">
+            <header className="home-header">
               <div>
-                <h1>Lead lists</h1>
+                <h1>Leads</h1>
                 <p>
-                  Campaign-owned lists are organized here. Import new leads from
-                  the campaign that will call them.
+                  All leads in your organization ({allLeads.length} total).
                 </p>
               </div>
-              <button
-                className="secondary-button"
-                onClick={() => setActiveNav("Campaigns")}
-              >
-                Open a campaign to import
-              </button>
+              <div>
+                <button
+                  className="secondary-button"
+                  onClick={() => setActiveNav("Campaigns")}
+                >
+                  View campaigns
+                </button>
+              </div>
             </header>
             {csvImportMessage && (
               <p className="csv-import-message" role="status">
@@ -3356,97 +3167,109 @@ function App({ initialSipProfile }: { initialSipProfile?: SipProfile }) {
                   </button>
                 </div>
               </section>
-            ) : (
+            ) : allLeads.length ? (
               <div
-                className="lead-list-table"
+                className="campaign-lead-table"
                 role="table"
-                aria-label="Lead lists"
+                aria-label="All leads"
               >
-                <div className="lead-list-table-head" role="row">
-                  <span role="columnheader">List</span>
-                  <span role="columnheader">Source</span>
-                  <span role="columnheader">Leads</span>
-                  <span role="columnheader">Updated</span>
-                  <span role="columnheader">Actions</span>
+                <div className="campaign-lead-head" role="row">
+                  <span />
+                  <span>Lead</span>
+                  <span>Phone</span>
+                  <span>Industry</span>
+                  <span>Location</span>
+                  <span>Rating</span>
+                  <span>Links</span>
+                  <span>Status</span>
                 </div>
-                {leadLists.length ? (
-                  leadLists.map((list) => (
+                {allLeads.map((lead) => {
+                  const name =
+                    [lead.firstName, lead.lastName].filter(Boolean).join(" ") ||
+                    lead.company ||
+                    "Unnamed lead";
+                  const leadStatus =
+                    lead.status === "working"
+                      ? "In call"
+                      : lead.status === "completed"
+                        ? "Completed"
+                        : lead.status === "do_not_call"
+                          ? "Do not call"
+                          : "Ready";
+                  return (
                     <div
-                      key={list._id}
-                      className="lead-list-table-row"
+                      className="campaign-lead-row"
+                      key={lead._id}
                       role="row"
                     >
                       <span role="cell">
-                        {editingLeadListId === list._id ? (
-                          <input
-                            aria-label="Lead list name"
-                            value={leadListNameDraft}
-                            onChange={(event) =>
-                              setLeadListNameDraft(event.target.value)
-                            }
-                          />
-                        ) : (
-                          <strong>{list.name}</strong>
-                        )}
+                        <button
+                          className="lead-dial-button"
+                          aria-label={`Open ${name} in Dial`}
+                          disabled={
+                            lead.status === "completed" ||
+                            lead.status === "do_not_call"
+                          }
+                          onClick={() =>
+                            void dialCampaignLead(lead._id, lead.leadListId)
+                          }
+                        >
+                          <Phone size={14} />
+                        </button>
                       </span>
-                      <span role="cell">CSV</span>
-                      <span role="cell">{list.leadCount}</span>
+                      <span className="lead-person" role="cell">
+                        <strong>{name}</strong>
+                        <small>
+                          {lead.company ||
+                            lead.title ||
+                            "No company added"}
+                        </small>
+                      </span>
+                      <span role="cell">{lead.phone || "—"}</span>
+                      <span role="cell">{lead.industry || "—"}</span>
+                      <span role="cell">{lead.location || "—"}</span>
                       <span role="cell">
-                        {new Intl.DateTimeFormat(undefined, {
-                          month: "short",
-                          day: "numeric",
-                        }).format(list.updatedAt)}
+                        {lead.rating ? `★ ${lead.rating}` : "—"}
                       </span>
-                      <span className="table-actions" role="cell">
-                        {editingLeadListId === list._id ? (
-                          <>
-                            <button
-                              className="secondary-button"
-                              onClick={() => void saveLeadListName()}
-                            >
-                              Save
-                            </button>
-                            <button
-                              className="text-button"
-                              onClick={() => setEditingLeadListId(null)}
-                            >
-                              Cancel
-                            </button>
-                          </>
-                        ) : (
-                          <>
-                            <button
-                              className="secondary-button"
-                              onClick={() => {
-                                setEditingLeadListId(list._id);
-                                setLeadListNameDraft(list.name);
-                              }}
-                            >
-                              Rename
-                            </button>
-                            <button
-                              className="secondary-button destructive-button"
-                              onClick={() =>
-                                void deleteLeadList(list._id, list.name)
-                              }
-                            >
-                              <Trash2 size={14} />
-                            </button>
-                          </>
+                      <span className="lead-links" role="cell">
+                        {lead.googleMapsUrl && (
+                          <a
+                            href={lead.googleMapsUrl}
+                            target="_blank"
+                            rel="noreferrer"
+                          >
+                            Maps
+                          </a>
                         )}
+                        {lead.website && (
+                          <a
+                            href={lead.website}
+                            target="_blank"
+                            rel="noreferrer"
+                          >
+                            Website
+                          </a>
+                        )}
+                        {!lead.googleMapsUrl && !lead.website && "—"}
+                      </span>
+                      <span role="cell">
+                        <b
+                          className={`lead-status status-${lead.status}`}
+                        >
+                          {leadStatus}
+                        </b>
                       </span>
                     </div>
-                  ))
-                ) : (
-                  <div className="lead-lists-empty">
-                    <FileText size={22} />
-                    <strong>Import your first lead list</strong>
-                    <span>
-                      Upload a CSV, map its columns, then import it into a new
-                      lead list.
-                    </span>
-                  </div>
-                )}
+                  );
+                })}
+              </div>
+            ) : (
+              <div className="campaign-workspace-empty">
+                <FileText size={22} />
+                <strong>No leads yet</strong>
+                <span>
+                  Import CSV files into your campaigns to see all leads combined here.
+                </span>
               </div>
             )}
           </section>
@@ -3996,8 +3819,7 @@ function App({ initialSipProfile }: { initialSipProfile?: SipProfile }) {
                           <div>
                             <h3>
                               Book with{" "}
-                              {dialerWorkspace?.activeOffer?.bookingProvider ===
-                              "calendly"
+                              {bookingProvider === "calendly"
                                 ? "Calendly"
                                 : "Cal.com"}
                             </h3>
@@ -4006,15 +3828,15 @@ function App({ initialSipProfile }: { initialSipProfile?: SipProfile }) {
                               ending this call.
                             </p>
                           </div>
-                          {dialerWorkspace?.activeOffer?.bookingUrl ? (
+                          {bookingUrl ? (
                             <iframe
                               title="Booking calendar"
-                              src={dialerWorkspace.activeOffer.bookingUrl}
+                              src={bookingUrl}
                             />
                           ) : (
                             <p className="settings-error">
                               Add a Cal.com or Calendly booking link in this
-                              campaign’s Offer first.
+                              campaign’s linked Product first.
                             </p>
                           )}
                           <div className="calendar-actions">
@@ -4026,9 +3848,7 @@ function App({ initialSipProfile }: { initialSipProfile?: SipProfile }) {
                             </button>
                             <button
                               className="primary-button"
-                              disabled={
-                                !dialerWorkspace?.activeOffer?.bookingUrl
-                              }
+                              disabled={!bookingUrl}
                               onClick={() => {
                                 setMeetingBooked(true);
                                 setOutcomeDraft("Interested");
@@ -4045,8 +3865,8 @@ function App({ initialSipProfile }: { initialSipProfile?: SipProfile }) {
                           <div>
                             <h3>Qualify before booking</h3>
                             <p>
-                              {dialerWorkspace?.activeOffer?.name ||
-                                "Campaign offer"}{" "}
+                              {activeSellingEntity?.name ||
+                                "Campaign product"}{" "}
                               · required criteria
                             </p>
                             {bookingCriteria.length ? (
@@ -4075,8 +3895,8 @@ function App({ initialSipProfile }: { initialSipProfile?: SipProfile }) {
                               ))
                             ) : (
                               <p className="empty-copy">
-                                Set a qualification checklist in this campaign’s
-                                Offer before booking.
+                                Set a qualification checklist in the linked
+                                Product before booking.
                               </p>
                             )}
                           </div>
@@ -4098,7 +3918,7 @@ function App({ initialSipProfile }: { initialSipProfile?: SipProfile }) {
                                   (criterion, index) =>
                                     !criterion.required || bookingChecks[index],
                                 ) ||
-                                !dialerWorkspace?.activeOffer?.bookingUrl
+                                !bookingUrl
                               }
                               onClick={() => setBookingCalendarOpen(true)}
                             >
@@ -4263,6 +4083,19 @@ function App({ initialSipProfile }: { initialSipProfile?: SipProfile }) {
                   placeholder="What it does in one clear sentence."
                 />
               </label>
+              <label>
+                Tags
+                <input
+                  value={productDraft.tags}
+                  onChange={(event) =>
+                    setProductDraft({
+                      ...productDraft,
+                      tags: event.target.value,
+                    })
+                  }
+                  placeholder="Website design, Local SEO, AI receptionist"
+                />
+              </label>
               <div className="modal-section">
                 <h3>Sales context</h3>
                 <label>
@@ -4278,7 +4111,7 @@ function App({ initialSipProfile }: { initialSipProfile?: SipProfile }) {
                   />
                 </label>
                 <label>
-                  Who we help
+                  Who we help (Ideal customer)
                   <textarea
                     value={productDraft.whoWeHelp}
                     onChange={(event) =>
@@ -4287,6 +4120,7 @@ function App({ initialSipProfile }: { initialSipProfile?: SipProfile }) {
                         whoWeHelp: event.target.value,
                       })
                     }
+                    placeholder="Owner-led Austin service businesses with an outdated website."
                   />
                 </label>
                 <label>
@@ -4344,6 +4178,110 @@ function App({ initialSipProfile }: { initialSipProfile?: SipProfile }) {
                     placeholder="https://cal.com/..."
                   />
                 </label>
+              </div>
+              <div className="criteria-editor">
+                <div>
+                  <h3>Qualified lead checklist</h3>
+                  <p>
+                    These appear before the calendar in a live call.
+                  </p>
+                </div>
+                {productDraft.qualificationCriteria.map(
+                  (criterion, index) => (
+                    <div className="criterion-row" key={index}>
+                      <input
+                        value={criterion.label}
+                        onChange={(event) =>
+                          setProductDraft((current) => ({
+                            ...current,
+                            qualificationCriteria:
+                              current.qualificationCriteria.map(
+                                (item, itemIndex) =>
+                                  itemIndex === index
+                                    ? {
+                                        ...item,
+                                        label: event.target.value,
+                                      }
+                                    : item,
+                              ),
+                          }))
+                        }
+                        placeholder="Qualification criterion"
+                      />
+                      <input
+                        value={criterion.guidance || ""}
+                        onChange={(event) =>
+                          setProductDraft((current) => ({
+                            ...current,
+                            qualificationCriteria:
+                              current.qualificationCriteria.map(
+                                (item, itemIndex) =>
+                                  itemIndex === index
+                                    ? {
+                                        ...item,
+                                        guidance: event.target.value,
+                                      }
+                                    : item,
+                              ),
+                          }))
+                        }
+                        placeholder="Optional guidance"
+                      />
+                      <label>
+                        <input
+                          type="checkbox"
+                          checked={criterion.required}
+                          onChange={(event) =>
+                            setProductDraft((current) => ({
+                              ...current,
+                              qualificationCriteria:
+                                current.qualificationCriteria.map(
+                                  (item, itemIndex) =>
+                                    itemIndex === index
+                                      ? {
+                                          ...item,
+                                          required:
+                                            event.target.checked,
+                                        }
+                                      : item,
+                                ),
+                            }))
+                          }
+                        />{" "}
+                        Required
+                      </label>
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setProductDraft((current) => ({
+                            ...current,
+                            qualificationCriteria:
+                              current.qualificationCriteria.filter(
+                                (_, itemIndex) => itemIndex !== index,
+                              ),
+                          }))
+                        }
+                      >
+                        Remove
+                      </button>
+                    </div>
+                  ),
+                )}
+                <button
+                  type="button"
+                  className="secondary-button"
+                  onClick={() =>
+                    setProductDraft((current) => ({
+                      ...current,
+                      qualificationCriteria: [
+                        ...current.qualificationCriteria,
+                        { label: "", guidance: "", required: true },
+                      ],
+                    }))
+                  }
+                >
+                  Add criterion
+                </button>
               </div>
               <footer>
                 <button

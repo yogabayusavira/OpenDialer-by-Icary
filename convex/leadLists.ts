@@ -59,6 +59,20 @@ export const list = query({
   },
 });
 
+export const listAllLeads = query({
+  args: {},
+  handler: async (ctx) => {
+    const { organizationId } = await activeOrganizationId(ctx);
+    const leads = await ctx.db
+      .query("leads")
+      .withIndex("by_organization", (q) =>
+        q.eq("organizationId", organizationId),
+      )
+      .collect();
+    return leads.sort((a, b) => b.importedAt - a.importedAt);
+  },
+});
+
 export const importCsv = mutation({
   args: {
     name: v.string(),
