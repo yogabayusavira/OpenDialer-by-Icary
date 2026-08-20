@@ -234,6 +234,7 @@ function App({ initialSipProfile }: { initialSipProfile?: SipProfile }) {
     leadListIds: [] as string[],
   });
   const [campaignPage, setCampaignPage] = useState(1);
+  const [productPage, setProductPage] = useState(1);
   const [createCampaignOpen, setCreateCampaignOpen] = useState(false);
   const [newCampaignSetup, setNewCampaignSetup] = useState({
     name: "",
@@ -2354,67 +2355,123 @@ function App({ initialSipProfile }: { initialSipProfile?: SipProfile }) {
                     <Plus size={16} /> Add product
                   </button>
                 </header>
-                {products.length ? (
-                  <div className="campaign-index">
-                    {products.map((product) => (
-                      <article className="campaign-card" key={product._id}>
-                        <button
-                          type="button"
-                          className="campaign-card-main"
-                          onClick={() => setSelectedProductId(product._id)}
+                {(() => {
+                  const PRODUCTS_PER_PAGE = 6;
+                  const totalPages = Math.max(
+                    1,
+                    Math.ceil(products.length / PRODUCTS_PER_PAGE),
+                  );
+                  const currentPage = Math.min(productPage, totalPages);
+                  const paginatedProducts = products.slice(
+                    (currentPage - 1) * PRODUCTS_PER_PAGE,
+                    currentPage * PRODUCTS_PER_PAGE,
+                  );
+
+                  return products.length ? (
+                    <>
+                      <div className="campaign-index">
+                        {paginatedProducts.map((product) => (
+                          <article className="campaign-card" key={product._id}>
+                            <button
+                              type="button"
+                              className="campaign-card-main"
+                              onClick={() => setSelectedProductId(product._id)}
+                            >
+                              <div className="campaign-card-header">
+                                <div className="campaign-card-title-group">
+                                  <strong>{product.name}</strong>
+                                  <span className="campaign-card-subtitle">
+                                    {product.whoWeHelp ? `Target: ${product.whoWeHelp}` : "Product"}
+                                  </span>
+                                </div>
+                              </div>
+                              <p className="product-description-snippet">
+                                {product.description ||
+                                  product.elevatorPitch ||
+                                  "No description provided."}
+                              </p>
+                              {product.tags && product.tags.length > 0 && (
+                                <div className="campaign-card-products">
+                                  {product.tags.map((tag: string) => (
+                                    <span key={tag} className="campaign-product-pill">
+                                      {tag}
+                                    </span>
+                                  ))}
+                                </div>
+                              )}
+                            </button>
+                            <footer>
+                              <button
+                                type="button"
+                                className="text-button card-open-action"
+                                onClick={() => setSelectedProductId(product._id)}
+                              >
+                                View product <ChevronRight size={14} />
+                              </button>
+                              <button
+                                type="button"
+                                className="icon-button destructive-button"
+                                aria-label={`Delete ${product.name}`}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  if (
+                                    window.confirm(
+                                      `Delete ${product.name}? It will be unlinked from all campaigns.`,
+                                    )
+                                  )
+                                    void removeProduct({ productId: product._id });
+                                }}
+                              >
+                                <Trash2 size={15} />
+                              </button>
+                            </footer>
+                          </article>
+                        ))}
+                      </div>
+                      {totalPages > 1 && (
+                        <div
+                          className="pagination-bar"
+                          role="navigation"
+                          aria-label="Product pagination"
                         >
-                          <div className="campaign-card-header">
-                            <div className="campaign-card-title-group">
-                              <strong>{product.name}</strong>
-                              <span className="campaign-card-subtitle">
-                                {product.whoWeHelp ? `Target: ${product.whoWeHelp}` : "Product"}
-                              </span>
-                            </div>
+                          <button
+                            type="button"
+                            className="secondary-button"
+                            disabled={currentPage <= 1}
+                            onClick={() =>
+                              setProductPage((p) => Math.max(1, p - 1))
+                            }
+                          >
+                            Previous
+                          </button>
+                          <div className="pagination-pages">
+                            {Array.from({ length: totalPages }, (_, i) => i + 1).map(
+                              (pageNum) => (
+                                <button
+                                  key={pageNum}
+                                  type="button"
+                                  className={`pagination-page-button ${pageNum === currentPage ? "active" : ""}`}
+                                  onClick={() => setProductPage(pageNum)}
+                                >
+                                  {pageNum}
+                                </button>
+                              ),
+                            )}
                           </div>
-                          <p className="product-description-snippet">
-                            {product.description ||
-                              product.elevatorPitch ||
-                              "No description provided."}
-                          </p>
-                          {product.tags && product.tags.length > 0 && (
-                            <div className="campaign-card-products">
-                              {product.tags.map((tag: string) => (
-                                <span key={tag} className="campaign-product-pill">
-                                  {tag}
-                                </span>
-                              ))}
-                            </div>
-                          )}
-                        </button>
-                        <footer>
                           <button
                             type="button"
-                            className="text-button card-open-action"
-                            onClick={() => setSelectedProductId(product._id)}
+                            className="secondary-button"
+                            disabled={currentPage >= totalPages}
+                            onClick={() =>
+                              setProductPage((p) => Math.min(totalPages, p + 1))
+                            }
                           >
-                            View product <ChevronRight size={14} />
+                            Next
                           </button>
-                          <button
-                            type="button"
-                            className="icon-button destructive-button"
-                            aria-label={`Delete ${product.name}`}
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              if (
-                                window.confirm(
-                                  `Delete ${product.name}? It will be unlinked from all campaigns.`,
-                                )
-                              )
-                                void removeProduct({ productId: product._id });
-                            }}
-                          >
-                            <Trash2 size={15} />
-                          </button>
-                        </footer>
-                      </article>
-                    ))}
-                  </div>
-                ) : (
+                        </div>
+                      )}
+                    </>
+                  ) : (
                   <div className="portfolio-empty">
                     <Package size={32} />
                     <strong>No products yet</strong>
@@ -2429,7 +2486,8 @@ function App({ initialSipProfile }: { initialSipProfile?: SipProfile }) {
                       <Plus size={16} /> Add product
                     </button>
                   </div>
-                )}
+                );
+              })()}
               </>
             )}
           </section>

@@ -10,6 +10,7 @@
 
 import type * as auth from "../auth.js";
 import type * as campaigns from "../campaigns.js";
+import type * as clearDemo from "../clearDemo.js";
 import type * as demo from "../demo.js";
 import type * as dialer from "../dialer.js";
 import type * as http from "../http.js";
@@ -27,6 +28,7 @@ import type {
 declare const fullApi: ApiFromModules<{
   auth: typeof auth;
   campaigns: typeof campaigns;
+  clearDemo: typeof clearDemo;
   demo: typeof demo;
   dialer: typeof dialer;
   http: typeof http;
