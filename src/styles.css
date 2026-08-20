@@ -4759,7 +4759,7 @@ body,
 
 .nav-item:hover {
   color: #ffffff;
-  background: #242424;
+  background: #0c0e15;
 }
 
 .nav-item:hover svg,
@@ -4797,7 +4797,7 @@ body,
 
 .nav-item.nav-child.selected {
   color: #fff;
-  background: #242424;
+  background: #0c0e15;
 }
 
 .nav-item.nav-child.selected::before {
