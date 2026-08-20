@@ -281,6 +281,96 @@ function App({ initialSipProfile }: { initialSipProfile?: SipProfile }) {
   const [campaignSection, setCampaignSection] = useState<
     "Overview" | "Product" | "Leads" | "Playbook"
   >("Overview");
+
+  // Global browser-style Topbar navigation history stack
+  type NavHistoryItem = {
+    activeNav: typeof activeNav;
+    selectedCampaignId: Id<"campaigns"> | null;
+    selectedProductId: Id<"products"> | null;
+    productEditorOpen: boolean;
+    editingProductId: Id<"products"> | null;
+    campaignSection: "Overview" | "Product" | "Leads" | "Playbook";
+  };
+
+  const [navHistory, setNavHistory] = useState<NavHistoryItem[]>([
+    {
+      activeNav: "Dial",
+      selectedCampaignId: null,
+      selectedProductId: null,
+      productEditorOpen: false,
+      editingProductId: null,
+      campaignSection: "Overview",
+    },
+  ]);
+  const [navHistoryIndex, setNavHistoryIndex] = useState(0);
+  const isNavigatingHistory = useRef(false);
+
+  useEffect(() => {
+    if (isNavigatingHistory.current) {
+      isNavigatingHistory.current = false;
+      return;
+    }
+    const current: NavHistoryItem = {
+      activeNav,
+      selectedCampaignId,
+      selectedProductId,
+      productEditorOpen,
+      editingProductId,
+      campaignSection,
+    };
+    setNavHistory((prev) => {
+      const activeItem = prev[navHistoryIndex];
+      if (
+        activeItem &&
+        activeItem.activeNav === current.activeNav &&
+        activeItem.selectedCampaignId === current.selectedCampaignId &&
+        activeItem.selectedProductId === current.selectedProductId &&
+        activeItem.productEditorOpen === current.productEditorOpen &&
+        activeItem.editingProductId === current.editingProductId &&
+        activeItem.campaignSection === current.campaignSection
+      ) {
+        return prev;
+      }
+      const trimmed = prev.slice(0, navHistoryIndex + 1);
+      return [...trimmed, current];
+    });
+    setNavHistoryIndex((prev) => prev + 1);
+  }, [
+    activeNav,
+    selectedCampaignId,
+    selectedProductId,
+    productEditorOpen,
+    editingProductId,
+    campaignSection,
+  ]);
+
+  const handleGoBack = () => {
+    if (navHistoryIndex > 0) {
+      const target = navHistory[navHistoryIndex - 1];
+      isNavigatingHistory.current = true;
+      setNavHistoryIndex(navHistoryIndex - 1);
+      setActiveNav(target.activeNav);
+      setSelectedCampaignId(target.selectedCampaignId);
+      setSelectedProductId(target.selectedProductId);
+      setProductEditorOpen(target.productEditorOpen);
+      setEditingProductId(target.editingProductId);
+      setCampaignSection(target.campaignSection);
+    }
+  };
+
+  const handleGoForward = () => {
+    if (navHistoryIndex < navHistory.length - 1) {
+      const target = navHistory[navHistoryIndex + 1];
+      isNavigatingHistory.current = true;
+      setNavHistoryIndex(navHistoryIndex + 1);
+      setActiveNav(target.activeNav);
+      setSelectedCampaignId(target.selectedCampaignId);
+      setSelectedProductId(target.selectedProductId);
+      setProductEditorOpen(target.productEditorOpen);
+      setEditingProductId(target.editingProductId);
+      setCampaignSection(target.campaignSection);
+    }
+  };
   const campaignDetail = useQuery(
     api.campaigns.campaignDetail,
     selectedCampaignId ? { campaignId: selectedCampaignId } : "skip",
@@ -1016,6 +1106,28 @@ function App({ initialSipProfile }: { initialSipProfile?: SipProfile }) {
             <span className="brand-attribution">by icary</span>
           </span>
         </div>
+        <div className="topbar-nav-controls">
+          <button
+            type="button"
+            className="topbar-nav-button"
+            disabled={navHistoryIndex <= 0}
+            onClick={handleGoBack}
+            title="Go back"
+            aria-label="Go back"
+          >
+            <ChevronLeft size={16} />
+          </button>
+          <button
+            type="button"
+            className="topbar-nav-button"
+            disabled={navHistoryIndex >= navHistory.length - 1}
+            onClick={handleGoForward}
+            title="Go forward"
+            aria-label="Go forward"
+          >
+            <ChevronRight size={16} />
+          </button>
+        </div>
         <label className="global-search">
           <Search size={16} />
           <input
@@ -1697,13 +1809,6 @@ function App({ initialSipProfile }: { initialSipProfile?: SipProfile }) {
             {productEditorOpen ? (
               <div className="product-editor-view">
                 <header className="campaign-detail-header product-editor-topbar">
-                  <button
-                    type="button"
-                    className="back-button"
-                    onClick={() => setProductEditorOpen(false)}
-                  >
-                    <ChevronLeft size={16} /> {selectedProductId ? "Back to product" : "Products"}
-                  </button>
                   <div>
                     <h1>{editingProductId ? "Edit product" : "New product"}</h1>
                     <p>
@@ -2054,13 +2159,6 @@ function App({ initialSipProfile }: { initialSipProfile?: SipProfile }) {
                 return (
                   <div className="product-detail-view">
                     <header className="campaign-detail-header">
-                      <button
-                        type="button"
-                        className="back-button"
-                        onClick={() => setSelectedProductId(null)}
-                      >
-                        <ChevronLeft size={16} /> Products
-                      </button>
                       <div>
                         <h1>{selectedProduct.name}</h1>
                         <p>
@@ -2845,12 +2943,6 @@ function App({ initialSipProfile }: { initialSipProfile?: SipProfile }) {
                 {campaignDetail && (
                   <>
                     <header className="campaign-detail-header">
-                      <button
-                        className="back-button"
-                        onClick={() => setSelectedCampaignId(null)}
-                      >
-                        <ChevronLeft size={16} /> Campaigns
-                      </button>
                       <div>
                         {editingCampaignName ? (
                           <div className="campaign-title-editor">

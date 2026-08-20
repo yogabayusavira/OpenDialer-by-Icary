@@ -2391,13 +2391,45 @@ body,
 .topbar {
   justify-content: flex-start;
 }
+.topbar-nav-controls {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-left: 14px;
+  margin-right: 10px;
+}
+.topbar-nav-button {
+  width: 28px;
+  height: 28px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  color: #c5c5c5;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.04);
+  cursor: pointer;
+  transition: all 120ms ease;
+}
+.topbar-nav-button:hover:not(:disabled) {
+  color: #fff;
+  background: rgba(255, 255, 255, 0.12);
+  border-color: rgba(255, 255, 255, 0.2);
+}
+.topbar-nav-button:disabled {
+  opacity: 0.25;
+  cursor: not-allowed;
+  border-color: transparent;
+  background: transparent;
+}
 .global-search {
-  width: min(460px, 42vw);
+  width: min(440px, 40vw);
   height: 31px;
   display: flex;
   align-items: center;
   gap: 8px;
-  margin-left: 4px;
+  margin-left: 0;
   padding: 0 10px;
   color: #a8a8a8;
   border: 1px solid #4a4a4a;
@@ -3596,11 +3628,10 @@ body,
   color: #111;
 }
 .campaign-detail-header {
-  display: grid;
-  grid-template-columns: 1fr auto;
-}
-.campaign-detail-header .back-button {
-  grid-column: 1 / -1;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 20px;
 }
 .campaign-tabs {
   display: flex;
